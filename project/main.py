@@ -160,7 +160,8 @@ class Network(tf.keras.Model):
         # 1D Convolutional Auto-Encoder
 
         self.encoder = models.Sequential([
-            layers.Conv1D(128, kernel_size=3, strides=2, padding='same', input_shape=(self.input_size, 4)),
+            # input_shape=(batch_space, steps, channels) (number of channels = number of feature maps = number of features)
+            layers.Conv1D(128, kernel_size=3, strides=2, padding='same', input_shape=(self.input_size, 1)), 
             act,
             layers.Conv1D(256, kernel_size=3, strides=2, padding='same'),
             act,
