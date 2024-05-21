@@ -126,3 +126,91 @@ for i in range(1,10,1):
   plt.title(f'Training Loss VS Validation Loss - Latent Dim = %d' % i)
   plt.legend()
   plt.show()
+  
+  ######################################################################
+  ########################## CONVOLUTIONAL #############################
+  ######################################################################
+  
+  import torch
+import torch.nn as nn
+
+import tensorflow as tf
+from tensorflow.keras import layers, models
+
+class Network(tf.keras.Model):
+    def __init__(self, hyperparameters):
+        super(Network, self).__init__()
+
+        # The hyperparameters of the network are saved for reproduction
+        self.hyperparameters = hyperparameters
+        
+        self.input_size = hyperparameters['input_size']
+        self.hidden_size = hyperparameters['hidden_size']
+        self.n_hidden_layers = hyperparameters['n_hidden_layers']
+        self.output_size = hyperparameters['output_size']
+        self.activation = hyperparameters['activation']
+
+        if self.activation == 'relu':
+            act = layers.ReLU()
+        elif self.activation == 'elu':
+            act = layers.ELU()
+        elif self.activation == 'leakyrelu':
+            act = layers.LeakyReLU(0.2)
+        elif self.activation == 'sigmoid':
+            act = layers.Activation('sigmoid')
+
+        # Define the layers of the network.
+        # 1D Convolutional Auto-Encoder
+
+        self.encoder = models.Sequential([
+            layers.Conv1D(128, kernel_size=3, strides=2, padding='same', input_shape=(self.input_size, 4)),
+            act,
+            layers.Conv1D(256, kernel_size=3, strides=2, padding='same'),
+            act,
+            layers.Conv1D(128, kernel_size=18, strides=1),
+            act,
+            layers.Conv1D(71, kernel_size=1, strides=1)
+        ])
+
+        self.decoder = models.Sequential([
+            layers.Conv1DTranspose(128, kernel_size=1, strides=1, input_shape=(None, 71)),
+            act,
+            layers.Conv1DTranspose(256, kernel_size=18, strides=1),
+            act,
+            layers.Conv1DTranspose(128, kernel_size=3, strides=2, padding='same', output_padding=1),
+            act,
+            layers.Conv1DTranspose(4, kernel_size=3, strides=2, padding='same')
+        ])
+
+    def forward(self, x):
+        """
+        Evaluate the network
+
+        Parameters
+        ----------
+        x : tensor
+            Input tensor
+
+        Returns
+        -------
+        tensor
+            Output tensor
+        """
+        encoded = self.encoder(x)
+        decoded = self.decoder(encoded)
+        return decoded
+
+# Example usage
+hyperparameters = {
+    'input_size': 100,  # Example input size
+    'hidden_size': 128,  # Example hidden layer size
+    'n_hidden_layers': 3,  # Example number of hidden layers
+    'output_size': 10,  # Example output size
+    'activation': 'relu'  # Example activation function
+}
+
+model = Network(hyperparameters)
+model.build(input_shape=(None, hyperparameters['input_size'], 4))  # Example input shape
+model.summary()
+
+        
