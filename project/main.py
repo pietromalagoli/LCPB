@@ -6,20 +6,48 @@ import tensorflow as tf
 import os 
 import re
 
+from tensorflow import keras
 from sklearn.metrics import accuracy_score, precision_score, recall_score
 from sklearn.model_selection import train_test_split
-from tensorflow.keras import layers, losses
-from tensorflow.keras.datasets import fashion_mnist
-from tensorflow.keras.models import Model
+from keras import layers, losses, metrics
+from keras.datasets import fashion_mnist
+from keras.models import Model
 from scipy.interpolate import UnivariateSpline
 
+##Autoencoder class definition
+class Autoencoder(Model):
+    
+    def __init__(self, encoder_neurons, decoder_neurons, encoder_activations, decoder_activations):
+
+      ##input check
+      if not len(encoder_neurons)==len(encoder_activations):
+        raise ValueError('The vector of neuron numbers for the encoder should be the same size of the activations')
+      if not len(decoder_neurons)==len(decoder_activations):
+        raise ValueError('The vector of neuron numbers for the decoder should be the same size of the activations')
+
+      encoder_layers=[]
+      decoder_layers=[]
+
+      ##define the encoder
+      input_shape = keras.Input(shape=(decoder_neurons[-1],))
+      encoded = layers.Dense(encoder_neurons[0],activation=encoder_activations[0])(input_shape)
+      for i in range(1,len(encoder_neurons)):
+        encoded = layers.Dense(encoder_neurons[i],activation=encoder_activations[i])(encoded)
+
+      ##define the decoder
+      decoded = layers.Dense(decoder_neurons[0],activation=decoder_activations[0])(encoded)
+      for i in range(1,len(decoder_neurons)):
+        decoded = layers.Dense(decoder_neurons[i],activation=decoder_activations[i])(decoded)
+      
+      super().__init__(input_shape,decoded)
+
+###Import parameters
 cwd=os.getcwd()
-dir_names=['MESA-Web_M07_Z00001','MESA-Web_M1_Z0001']
+dir_names=['MESA-Web_M07_Z00001']#'MESA-Web_M1_Z0001'
 column_filter = ['mass','radius', 'initial_mass', 'initial_z', 'star_age', 'logRho','logT','Teff','energy','photosphere_L', 'photosphere_r', 'star_mass','h1','he3','he4']
 column_filter_train = ['mass','radius', 'logRho','logT','energy','h1','he3','he4']
 n_points=50
 r=np.linspace(0,1,n_points)
-
 
 for i,dir_name in enumerate(dir_names):
 
@@ -77,52 +105,120 @@ for i,dir_name in enumerate(dir_names):
 print(linear_train_df.shape)
 print(linear_train_df)
 
-#for i in range(linear_train_df.shape[1]):
-#  plt.plot(r,linear_train_df[f"log_rho_{i}"])
-#  plt.show()
 
 x_train, x_test = train_test_split(linear_train_df.T, test_size=0.2)
-print (x_train.shape)
-print (x_test.shape)
+x_train = x_train.values
+x_test = x_test.values
+print(x_train.shape)
+print(x_test.shape)
 print(x_train)
 print(x_test)
+shape = x_test.shape[1:]
+save_graphs=True
+show_history=True
 
 for i in range(1,10,1):
-  latent_dim = i 
 
-  class Autoencoder(Model):
-    def __init__(self, latent_dim):
-      super(Autoencoder, self).__init__()
-      self.latent_dim = latent_dim   
-      self.encoder = tf.keras.Sequential([
-        layers.Flatten(),
-        layers.Dense(latent_dim, activation='relu'),
-      ])
-      self.decoder = tf.keras.Sequential([
-        layers.Dense(n_points, activation='sigmoid'),
-        layers.Reshape((n_points, 1))
-      ])
+  ###Autoencoder parameters
+  encoder_neurons=[100,i]                                         #last value should be the latent dimention
+  decoder_neurons=encoder_neurons[:len(encoder_neurons)-1][::-1]            #same inverted values for the hidden layers
+  decoder_neurons.append(n_points)                                          #last value should be original size
+  encoder_activations=['relu']*len(encoder_neurons)                         #with relu better learning
+  decoder_activations=['relu']*(len(encoder_neurons)-1)                     #relu for better learning
+  decoder_activations.append('sigmoid')                                     #at least the last value should be sigmoid
 
-    def call(self, x):
-      encoded = self.encoder(x)
-      decoded = self.decoder(encoded)
-      return decoded
+  """
+  autoencoder = Autoencoder(encoder_neurons=encoder_neurons,decoder_neurons=decoder_neurons,\
+                            encoder_activations=encoder_activations,decoder_activations=decoder_activations)
 
-  autoencoder = Autoencoder(latent_dim)
+  autoencoder.compile(optimizer='adam', loss=losses.MeanSquaredError(), metrics=[metrics.Accuracy()])
 
-  autoencoder.compile(optimizer='adam', loss=losses.MeanSquaredError(), metrics=['accuracy'])
-
+  autoencoder.summary()
+  
   history = autoencoder.fit(x_train, x_train,
                   epochs=150,
                   shuffle=True,
                   validation_data=(x_test, x_test))
 
-  autoencoder.encoder.summary()
+  if show_history:
+    print(history)
 
-  autoencoder.decoder.summary()
+  if save_graphs:
+    file_save_dir=os.path.join(os.getcwd(),"Graphs",f"TrainValLoss_dim_{i}.png")
+    plt.plot(history.history["loss"], label="Training Loss")
+    plt.plot(history.history["val_loss"], label="Validation Loss")
+    plt.title(f'Training Loss VS Validation Loss - Latent Dim = {i}')
+    plt.legend()
+    plt.savefig(file_save_dir)
+    plt.close()
+  
+  decoded_imgs = autoencoder.predict(x_test)
+  """
 
-  plt.plot(history.history["loss"], label="Training Loss")
-  plt.plot(history.history["val_loss"], label="Validation Loss")
-  plt.title(f'Training Loss VS Validation Loss - Latent Dim = %d' % i)
-  plt.legend()
+  input_img = keras.Input(shape=(50,))
+  # "encoded" is the encoded representation of the input
+  encoded = layers.Dense(i, activation='relu')(input_img)
+  # "decoded" is the lossy reconstruction of the input
+  decoded = layers.Dense(50, activation='sigmoid')(encoded)
+
+  # This model maps an input to its reconstruction
+  autoencoder = keras.Model(input_img, decoded)
+
+
+  # This model maps an input to its encoded representation
+  encoder = keras.Model(input_img, encoded)
+
+
+
+  # This is our encoded (32-dimensional) input
+  encoded_input = keras.Input(shape=(i,))
+  # Retrieve the last layer of the autoencoder model
+  decoder_layer = autoencoder.layers[-1]
+  # Create the decoder model
+  decoder = keras.Model(encoded_input, decoder_layer(encoded_input))
+
+
+  autoencoder.compile(optimizer='adam', loss='binary_crossentropy')
+
+  autoencoder.fit(x_train, x_train,
+                epochs=50,
+                batch_size=256,
+                shuffle=True,
+                validation_data=(x_test, x_test))
+  
+  encoded_imgs = encoder.predict(x_test)
+  decoded_imgs = decoder.predict(encoded_imgs)
+  decoded_imgs=autoencoder.predict(x_test)
+
+  n = 10  # How many digits we will display
+  plt.figure(figsize=(20, 4))
+  for i in range(5):
+      # Display original
+      ax = plt.subplot(2, n, i + 1)
+      plt.plot(r,x_test[i])
+      plt.gray()
+      ax.get_xaxis().set_visible(False)
+      ax.get_yaxis().set_visible(False)
+
+      # Display reconstruction
+      ax = plt.subplot(2, n, i + 1 + n)
+      plt.plot(r,decoded_imgs[i])
+      plt.gray()
+      ax.get_xaxis().set_visible(False)
+      ax.get_yaxis().set_visible(False)
   plt.show()
+
+  #data=x_test.iloc[0]
+  #print(data)
+  #print(data.shape)
+  #predicted = autoencoder.predict(data[np.newaxis, :])[0]
+  #print(predicted)
+  #print(predicted.shape)
+  #plt.plot(r,data,label="Real")
+  #plt.plot(r,predicted,label="Reconstructed")
+  #plt.legend()
+  #plt.show()
+
+  #plt.plot(r,x_test.loc[0])
+  #plt.plot(r,autoencoder.predict(x_test.loc[0]))
+  #plt.show()
