@@ -133,27 +133,26 @@ class Network(tf.keras.Model):
 
         # Define the layers of the network ( encoder and decoder)
         
-        #self.encoder = tf.keras.Sequential([
-            #tf.keras.layers.Conv1D(filters=500, kernel_size=3, strides=2, padding='same', activation=act), # 1D 128 kernels of length=36  ##filters -> dimesion of output space
-            #tf.keras.layers.Conv1D(filters=250, kernel_size=3, strides=2, padding='same', activation=act), # 1D 4*64 kernels of length=18
+        self.encoder = tf.keras.Sequential([
+            tf.keras.layers.Conv1D(filters=500, kernel_size=3, strides=2, padding='valid', activation=act), # 1D 128 kernels of length=36  ##filters -> dimesion of output space
+            tf.keras.layers.Conv1D(filters=250, kernel_size=3, strides=2, padding='same', activation=act),
+            tf.keras.layers.Conv1D(filters=70, kernel_size=3, strides=2, padding='same', activation=act),
+            tf.keras.layers.Conv1D(filters=self.latent_dim, kernel_size=3, strides=2, padding='same', activation=act), # 1D 4*64 kernels of length=18
             #tf.keras.layers.Conv1D(filters=75, kernel_size=3, strides=1, activation=act), # 1D 128 kernels of length=1
             #tf.keras.layers.Conv1D(filters=self.latent_dim, kernel_size=1, strides=1) # NiN 
             
-        #])
+        ])
 
-        #self.decoder = tf.keras.Sequential([
-            #tf.keras.layers.Conv1DTranspose(filters=self.latent_dim, kernel_size=1, strides=1, activation=act), # Reverse of NiN
-            #tf.keras.layers.Conv1DTranspose(filters=75, kernel_size=3, strides=1, activation=act), # Reverse of kernel 3
+        self.decoder = tf.keras.Sequential([
+            tf.keras.layers.Conv1DTranspose(filters=70, kernel_size=3, strides=2,padding= 'same', activation=act), # Reverse of NiN
+            tf.keras.layers.Conv1DTranspose(filters=250, kernel_size=3, strides=2,padding= 'same', activation=act),
+            tf.keras.layers.Conv1DTranspose(filters=500, kernel_size=3, strides=2,padding= 'valid', activation=act),
+            tf.keras.layers.Conv1DTranspose(filters=self.output_size, kernel_size=3, strides=2, padding= 'same', activation=act), # Reverse of kernel 3
             #tf.keras.layers.Conv1DTranspose(filters=250, kernel_size=3, strides=2, padding='same', activation=act), # Reverse of kernel 3 and stride 2
             #tf.keras.layers.Conv1DTranspose(filters=500, kernel_size=3, strides=2, padding='same') # Reverse of kernel 3 and stride 2
-        #])
+        ])
 
-        self.encoder_conv1 = tf.keras.layers.Conv1D(filters= 32, kernel_size = 3, strides = 2, padding= 'valid', activation=self.activation)
-        self.encoder_conv2 = tf.keras.layers.Conv1D(filters=self.latent_dim, kernel_size=3, strides=2, padding='same', activation=self.activation)
         
-        self.decoder_conv1 = tf.keras.layers.Conv1DTranspose(filters=32, kernel_size=3, strides=2, padding='valid', activation=self.activation)
-        self.decoder_conv2 = tf.keras.layers.Conv1DTranspose(filters=self.output_size, kernel_size=3, strides=2, padding='same', activation=None)
-
     def call(self, x):
         """
         Evaluate the network
@@ -168,11 +167,9 @@ class Network(tf.keras.Model):
         tensor
             Output tensor
         """       
-        encoded = self.encoder_conv1(x)
-        encoded = self.encoder_conv2(encoded)
+        encoded = self.encoder(x)
+        decoded= self.decoder(encoded)
         
-        decoded= self.decoder_conv1(encoded)
-        decoded = self.decoder_conv2(decoded)
         return decoded
     
     
