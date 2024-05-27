@@ -3,212 +3,151 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
-import os 
+import os
 import re
 
-from sklearn.metrics import accuracy_score, precision_score, recall_score
+from tensorflow import keras
 from sklearn.model_selection import train_test_split
-from tensorflow.keras import layers, losses
-from tensorflow.keras.datasets import fashion_mnist
-from tensorflow.keras.models import Model
+from keras import layers, losses
+from keras.models import Model
 from scipy.interpolate import UnivariateSpline
+from tqdm import tqdm
 
-cwd=os.getcwd()
-dir_names=['MESA-Web_M07_Z00001','MESA-Web_M1_Z0001']
-column_filter = ['mass','radius', 'initial_mass', 'initial_z', 'star_age', 'logRho','logT','Teff','energy','photosphere_L', 'photosphere_r', 'star_mass','h1','he3','he4']
-column_filter_train = ['mass','radius', 'logRho','logT','energy','h1','he3','he4']
-n_points=50
-r=np.linspace(0,1,n_points)
+##########IMPORT PARAMETERS##########
+cwd = os.getcwd()
+dir_names = ['MESA-Web_M07_Z00001', 'MESA-Web_M07_Z002']  # type 'all' if you want to use all the data
+column_filter = ['mass', 'radius', 'initial_mass', 'initial_z', 'star_age', 'logRho', 'logT',
+                 'Teff', 'energy', 'photosphere_L', 'photosphere_r', 'star_mass', 'h1', 'he3', 'he4']
+column_filter_train = ['logRho']  # radius is not included for coding reasons but is still considered
+n_points = 100  # n of points to sample from each profile
+r = np.linspace(0, 1, n_points + 1)[1:]  # values of normalized r on which to take the values of the variables
+
+if dir_names[0] == 'all':
+    dir_names = ['MESA-Web_M07_Z00001', 'MESA-Web_M07_Z002', 'MESA-Web_M10_Z002', 'MESA-Web_M10_Z0001',
+                 'MESA-Web_M10_Z00001', 'MESA-Web_M15_Z0001', 'MESA-Web_M15_Z00001', 'MESA-Web_M30_Z00001',
+                 'MESA-Web_M30_Z002', 'MESA-Web_M50_Z00001', 'MESA-Web_M50_Z002', 'MESA-Web_M50_Z001',
+                 'MESA-Web_M5_Z002', 'MESA-Web_M5_Z0001', 'MESA-Web_M1_Z00001', 'MESA-Web_M1_Z0001']
 
 
-for i,dir_name in enumerate(dir_names):
+##Autoencoder class definition
+class Autoencoder(Model):
+    def __init__(self, encoder_neurons, decoder_neurons, encoder_activations, decoder_activations):
+        ##input check
+        if not len(encoder_neurons) == len(encoder_activations):
+            raise ValueError('The vector of neuron numbers for the encoder should be the same size of the activations')
+        if not len(decoder_neurons) == len(decoder_activations):
+            raise ValueError('The vector of neuron numbers for the decoder should be the same size of the activations')
 
-  print(f"####\t\tIMPORTING DATA FROM FOLDER {dir_name}\t\t####")
-  dir_name=os.path.join(cwd,'StellarTracks',dir_name)
+        encoder_layers = []
+        decoder_layers = []
 
-  def extract_number(filename):
-    match = re.search(r'\d+', filename)  #find the sequence of digits
-    return int(match.group()) if match else float('inf')
+        ##define the encoder
+        input_shape = keras.Input(shape=(decoder_neurons[-1],))
+        encoded = layers.Dense(encoder_neurons[0], activation=encoder_activations[0])(input_shape)
+        for i in range(1, len(encoder_neurons)):
+            encoded = layers.Dense(encoder_neurons[i], activation=encoder_activations[i])(encoded)
 
-  filenames=[filename for filename in os.listdir(dir_name) if re.fullmatch('profile[0-9]+\.data',filename)]
-  filenames=sorted(filenames, key=extract_number) #sort the elements according to the number in the name
+        ##define the decoder
+        decoded = layers.Dense(decoder_neurons[0], activation=decoder_activations[0])(encoded)
+        for i in range(1, len(decoder_neurons)):
+            decoded = layers.Dense(decoder_neurons[i], activation=decoder_activations[i])(decoded)
 
-  for j,filename in enumerate(filenames):
+        super().__init__(input_shape, decoded)
 
-    print(f"####\t\t\tIMPORTING FILE {filename}\t\t\t####")  
-    filename=os.path.join(dir_name,filename)
 
-    data=mw.read_profile(filename)
+# Initialize an empty list to hold all the profiles
+all_profiles = []
 
-    profile_df=pd.DataFrame(data)
+for i, dir_name in enumerate(tqdm(dir_names, desc="Importing data from directories")):
+    dir_path = os.path.join(cwd, 'StellarTracks', dir_name)
 
-    # Create a new DataFrame with only the selected columns
-    filtered_profile_df = profile_df[column_filter].copy()
-    # Create a new DataFrame with only the selected columns for autoencoder training
-    train_filtered_profile_df = profile_df[column_filter_train].copy()
+    def extract_number(filename):
+        match = re.search(r'\d+', filename)  # find the sequence of digits
+        return int(match.group()) if match else float('inf')
 
-    #Normalization process
-    tot_radius=filtered_profile_df['photosphere_r']
-    #tot_mass=filtered_profile_df['star_mass']
-    #From log to linear scale
-    #train_filtered_profile1_df['logRho']=10**(train_filtered_profile1_df['logRho'])
-    #train_filtered_profile1_df['logT']=10**(train_filtered_profile1_df['logT'])
+    filenames = [filename for filename in os.listdir(dir_path) if re.fullmatch('profile[0-9]+\.data', filename)]
+    filenames = sorted(filenames, key=extract_number)  # sort the elements according to the number in the name
 
-    norm_radius=(filtered_profile_df['radius']-filtered_profile_df['radius'].min())/(tot_radius-filtered_profile_df['radius'].min())
-    #norm_mass=(filtered_profile_df['mass']-filtered_profile_df['mass'].min())/(tot_mass-filtered_profile_df['mass'].min())
-    #norm_rho=(train_filtered_profile1_df['logRho']-train_filtered_profile1_df['logRho'].min())/(train_filtered_profile1_df['logRho'].max()-train_filtered_profile1_df['logRho'].min())
-    #norm_t=(train_filtered_profile_df['logT']-train_filtered_profile_df['logT'].min())/(train_filtered_profile_df['logT'].max()-train_filtered_profile_df['logT'].min())
-    #norm_energy=(train_filtered_profile_df['energy']-train_filtered_profile_df['energy'].min())/(train_filtered_profile_df['energy'].max()-train_filtered_profile_df['energy'].min())
+    for j, filename in enumerate(tqdm(filenames, desc=f"Importing from {dir_name}", leave=False)):
+        filename = os.path.join(dir_path, filename)
+        data = mw.read_profile(filename)
+        profile_df = pd.DataFrame(data)
+        filtered_profile_df = profile_df[column_filter].copy()
+        train_filtered_profile_df = profile_df[column_filter_train].copy()
 
-    norm_radius=np.asarray(norm_radius.T)
-    log_rho=np.asarray(train_filtered_profile_df['logRho'].T)
-    #norm_mass=np.asarray(norm_mass.T)
-    #norm_t=np.asarray(norm_t.T)
-    #norm_energy=np.asarray(norm_energy.T)
-    int_log_rho=UnivariateSpline(norm_radius,log_rho,k=2,s=0)(r)
+        norm_radius = (filtered_profile_df['radius'] - filtered_profile_df['radius'].min()) / \
+                      (filtered_profile_df['radius'].max() - filtered_profile_df['radius'].min())
+        norm_profiles = []
 
-    train_df=pd.DataFrame(data=int_log_rho.T,columns=[f"log_rho_{i}_{j}"])  #in the format _indexOfFolder_IndexOfProfile
-  
-    if (i==0 and j==0):
-      linear_train_df=train_df
-    else:
-      linear_train_df=pd.concat([linear_train_df,train_df],axis=1)
+        for k, column in enumerate(column_filter_train):
+            norm = (filtered_profile_df[column] - filtered_profile_df[column].min()) / \
+                   (filtered_profile_df[column].max() - filtered_profile_df[column].min())
+            norm = np.asarray(norm.T)
+            int_norm = UnivariateSpline(norm_radius, norm, k=2, s=0)(r)
+            norm_profiles.append(int_norm)
+            print("Length of this profile: ",len(norm_profiles))
 
-print(linear_train_df.shape)
-print(linear_train_df)
+        all_profiles.append(np.array(norm_profiles).T)
+        print("Num profiles: ", len(all_profiles))
 
-#for i in range(linear_train_df.shape[1]):
-#  plt.plot(r,linear_train_df[f"log_rho_{i}"])
-#  plt.show()
+# Convert the list of profiles to a numpy array
+all_profiles = np.array(all_profiles)
+print("Final length of all profiles",len(all_profiles))
 
-x_train, x_test = train_test_split(linear_train_df.T, test_size=0.2)
-print (x_train.shape)
-print (x_test.shape)
-print(x_train)
-print(x_test)
+# Split the data
+x_train, x_test = train_test_split(all_profiles, test_size=0.2)
+print(x_train.shape)
+print(x_test.shape)
 
-for i in range(1,10,1):
-  latent_dim = i 
+for i in range(1, 10):
+    ###Autoencoder parameters
+    encoder_neurons = [100, i]  # last value should be the latent dimension
+    decoder_neurons = encoder_neurons[:len(encoder_neurons) - 1][::-1]  # same inverted values for the hidden layers
+    decoder_neurons.append(n_points*len(column_filter_train))  # last value should be original size
+    encoder_activations = ['relu'] * len(encoder_neurons)  # with relu better learning
+    decoder_activations = ['relu'] * (len(encoder_neurons) - 1)  # relu for better learning
+    decoder_activations.append('sigmoid')  # at least the last value should be sigmoid
 
-  class Autoencoder(Model):
-    def __init__(self, latent_dim):
-      super(Autoencoder, self).__init__()
-      self.latent_dim = latent_dim   
-      self.encoder = tf.keras.Sequential([
-        layers.Flatten(),
-        layers.Dense(latent_dim, activation='relu'),
-      ])
-      self.decoder = tf.keras.Sequential([
-        layers.Dense(n_points, activation='sigmoid'),
-        layers.Reshape((n_points, 1))
-      ])
+    autoencoder = Autoencoder(encoder_neurons=encoder_neurons, decoder_neurons=decoder_neurons,
+                              encoder_activations=encoder_activations, decoder_activations=decoder_activations)
 
-    def call(self, x):
-      encoded = self.encoder(x)
-      decoded = self.decoder(encoded)
-      return decoded
+    autoencoder.compile(optimizer='adam', loss=losses.MeanSquaredError())
+    autoencoder.summary()
 
-  autoencoder = Autoencoder(latent_dim)
+    history = autoencoder.fit(x_train, x_train,
+                              epochs=1000,
+                              shuffle=True,
+                              validation_data=(x_test, x_test),
+                              callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=10)])
 
-  autoencoder.compile(optimizer='adam', loss=losses.MeanSquaredError(), metrics=['accuracy'])
+    # Save loss graphs
+    file_save_dir = os.path.join(os.getcwd(), "Graphs", f"TrainValLoss_dim_{i}.png")
+    plt.plot(history.history["loss"], label="Training Loss")
+    plt.plot(history.history["val_loss"], label="Validation Loss")
+    plt.title(f'Training Loss VS Validation Loss - Latent Dim = {i}')
+    plt.legend()
+    plt.savefig(file_save_dir)
+    plt.close()
 
-  history = autoencoder.fit(x_train, x_train,
-                  epochs=150,
-                  shuffle=True,
-                  validation_data=(x_test, x_test))
+    x_reconstructed = autoencoder.predict(x_test)
+    print(x_reconstructed.shape)
 
-  autoencoder.encoder.summary()
+    # Plot and save original vs reconstructed profiles
+    n = 10  # How many profiles we will display
+    plt.figure(figsize=(20, 4))
+    plt.axis("off")
+    plt.title(f'Examples of fit with latent dimension = {i}')
+    for j in range(n):
+        # Display original
+        ax = plt.subplot(2, n, j + 1)
+        plt.scatter(r, x_test[j].reshape(-1, n_points)[0])
+        plt.gray()
 
-  autoencoder.decoder.summary()
+        # Display reconstruction
+        ax = plt.subplot(2, n, j + 1 + n)
+        plt.scatter(r, x_reconstructed[j].reshape(-1, n_points)[0])
+        plt.gray()
 
-  plt.plot(history.history["loss"], label="Training Loss")
-  plt.plot(history.history["val_loss"], label="Validation Loss")
-  plt.title(f'Training Loss VS Validation Loss - Latent Dim = %d' % i)
-  plt.legend()
-  plt.show()
-  
-  ######################################################################
-  ########################## CONVOLUTIONAL #############################
-  ######################################################################
-
-import tensorflow as tf
-from tensorflow.keras import layers, models
-
-class Network(tf.keras.Model):
-    def __init__(self, hyperparameters):
-        super(Network, self).__init__()
-
-        # The hyperparameters of the network are saved for reproduction
-        self.hyperparameters = hyperparameters
-        
-        self.input_size = hyperparameters['input_size']
-        self.hidden_size = hyperparameters['hidden_size']
-        self.n_hidden_layers = hyperparameters['n_hidden_layers']
-        self.output_size = hyperparameters['output_size']
-        self.activation = hyperparameters['activation']
-
-        if self.activation == 'relu':
-            act = layers.ReLU()
-        elif self.activation == 'elu':
-            act = layers.ELU()
-        elif self.activation == 'leakyrelu':
-            act = layers.LeakyReLU(0.2)
-        elif self.activation == 'sigmoid':
-            act = layers.Activation('sigmoid')
-
-        # Define the layers of the network.
-        # 1D Convolutional Auto-Encoder
-
-        self.encoder = models.Sequential([
-            # input_shape=(batch_space, steps, channels) (number of channels = number of feature maps = number of features)
-            layers.Conv1D(128, kernel_size=3, strides=2, padding='same', input_shape=(self.input_size, 1)), 
-            act,
-            layers.Conv1D(256, kernel_size=3, strides=2, padding='same'),
-            act,
-            layers.Conv1D(128, kernel_size=18, strides=1),
-            act,
-            layers.Conv1D(71, kernel_size=1, strides=1)
-        ])
-
-        self.decoder = models.Sequential([
-            layers.Conv1DTranspose(128, kernel_size=1, strides=1, input_shape=(None, 71)),
-            act,
-            layers.Conv1DTranspose(256, kernel_size=18, strides=1),
-            act,
-            layers.Conv1DTranspose(128, kernel_size=3, strides=2, padding='same', output_padding=1),
-            act,
-            layers.Conv1DTranspose(4, kernel_size=3, strides=2, padding='same')
-        ])
-
-    def forward(self, x):
-        """
-        Evaluate the network
-
-        Parameters
-        ----------
-        x : tensor
-            Input tensor
-
-        Returns
-        -------
-        tensor
-            Output tensor
-        """
-        encoded = self.encoder(x)
-        decoded = self.decoder(encoded)
-        return decoded
-
-# Example usage
-hyperparameters = {
-    'input_size': 100,  # Example input size
-    'hidden_size': 128,  # Example hidden layer size
-    'n_hidden_layers': 3,  # Example number of hidden layers
-    'output_size': 10,  # Example output size
-    'activation': 'relu'  # Example activation function
-}
-
-model = Network(hyperparameters)
-model.build(input_shape=(None, hyperparameters['input_size'], 4))  # Example input shape
-model.summary()
-
-        
+    file_save_dir = os.path.join(os.getcwd(), "Graphs", f"OriginalReconstructed_{i}.png")
+    plt.savefig(file_save_dir)
+    plt.close()

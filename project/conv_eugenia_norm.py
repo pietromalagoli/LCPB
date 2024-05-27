@@ -8,13 +8,15 @@ import re
 
 from sklearn.metrics import accuracy_score, precision_score, recall_score
 from sklearn.model_selection import train_test_split
-from tensorflow.keras import  losses, layers
-from tensorflow.keras.datasets import fashion_mnist
-from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Input, Conv1D, MaxPooling1D, UpSampling1D
+from tensorflow import keras 
+from keras import  losses, layers, activations
+from keras.datasets import fashion_mnist
+from keras.models import Model
+from keras.layers import Input, Conv1D, MaxPooling1D, UpSampling1D
 from scipy.interpolate import UnivariateSpline
-from tensorflow.keras.datasets import mnist
-from tensorflow.keras import backend as K
+from keras.datasets import mnist
+from keras import backend as K
+from tqdm import tqdm
 
 
 
@@ -39,61 +41,49 @@ n_points=50
 r=np.linspace(0,1,n_points)
 
 
-for i,dir_name in enumerate(dir_names):
+# Initialize an empty list to hold all the profiles
+all_profiles = []
 
-  print(f"####\t\tIMPORTING DATA FROM FOLDER {dir_name}\t\t####")
-  dir_name=os.path.join(cwd,'StellarTracks',dir_name)
+for i, dir_name in enumerate(tqdm(dir_names, desc="Importing data from directories")):
+    dir_path = os.path.join(cwd, 'StellarTracks', dir_name)
 
-  def extract_number(filename):
-    match = re.search(r'\d+', filename)  #find the sequence of digits
-    return int(match.group()) if match else float('inf')
+    def extract_number(filename):
+        match = re.search(r'\d+', filename)  # find the sequence of digits
+        return int(match.group()) if match else float('inf')
 
-  filenames=[filename for filename in os.listdir(dir_name) if re.fullmatch('profile[0-9]+\.data',filename)]
-  filenames=sorted(filenames, key=extract_number) #sort the elements according to the number in the name
+    filenames = [filename for filename in os.listdir(dir_path) if re.fullmatch('profile[0-9]+\.data', filename)]
+    filenames = sorted(filenames, key=extract_number)  # sort the elements according to the number in the name
 
-  for j,filename in enumerate(filenames):
+    for j, filename in enumerate(tqdm(filenames, desc=f"Importing from {dir_name}", leave=False)):
+        filename = os.path.join(dir_path, filename)
+        data = mw.read_profile(filename)
+        profile_df = pd.DataFrame(data)
+        filtered_profile_df = profile_df[column_filter].copy()
+        train_filtered_profile_df = profile_df[column_filter_train].copy()
 
-    print(f"####\t\t\tIMPORTING FILE {filename}\t\t\t####")  
-    filename=os.path.join(dir_name,filename)
+        norm_radius = (filtered_profile_df['radius'] - filtered_profile_df['radius'].min()) / \
+                      (filtered_profile_df['radius'].max() - filtered_profile_df['radius'].min())
+        norm_profiles = []
 
-    data=mw.read_profile(filename)
+        for k, column in enumerate(column_filter_train):
+            norm = (filtered_profile_df[column] - filtered_profile_df[column].min()) / \
+                   (filtered_profile_df[column].max() - filtered_profile_df[column].min())
+            norm = np.asarray(norm.T)
+            int_norm = UnivariateSpline(norm_radius, norm, k=2, s=0)(r)
+            norm_profiles.append(int_norm)
+            print("Length of this profile: ",len(norm_profiles))
 
-    profile_df=pd.DataFrame(data)
+        all_profiles.append(np.array(norm_profiles).T)
+        print("Num profiles: ", len(all_profiles))
 
-    # Create a new DataFrame with only the selected columns
-    filtered_profile_df = profile_df[column_filter].copy()
-    # Create a new DataFrame with only the selected columns for autoencoder training
-    train_filtered_profile_df = profile_df[column_filter_train].copy()
+# Convert the list of profiles to a numpy array
+all_profiles = np.array(all_profiles)
+print("Final length of all profiles",len(all_profiles))
 
-    #Normalization process
-    tot_radius=filtered_profile_df['photosphere_r']
-
-    norm_radius=(filtered_profile_df['radius']-filtered_profile_df['radius'].min())/(tot_radius-filtered_profile_df['radius'].min())
-
-    norm_radius=np.asarray(norm_radius.T)
-    log_rho=np.asarray(train_filtered_profile_df['logRho'].T)
-    
-    int_log_rho=UnivariateSpline(norm_radius,log_rho,k=2,s=0)(r)
-
-    train_df=pd.DataFrame(data=int_log_rho.T,columns=[f"log_rho_{i}_{j}"])  #in the format _indexOfFolder_IndexOfProfile
-  
-    if (i==0 and j==0):
-      linear_train_df=train_df
-    else:
-      linear_train_df=pd.concat([linear_train_df,train_df],axis=1)
-
-print(linear_train_df.shape)
-print(linear_train_df)
-
-#for i in range(linear_train_df.shape[1]):
-#  plt.plot(r,linear_train_df[f"log_rho_{i}"])
-#  plt.show()
-
-x_train, x_test = train_test_split(linear_train_df.T, test_size=0.2)
-print ('train shape :', x_train.shape) # (69, 50)
-print ('test shape:', x_test.shape) #(18, 50)
-print(x_train)
-print(x_test)
+# Split the data
+x_train, x_test = train_test_split(all_profiles, test_size=0.2)
+print(x_train.shape)
+print(x_test.shape)
 
 
 # Reshape the data to match the input shape expected by the model
@@ -147,7 +137,7 @@ class Network(tf.keras.Model):
             tf.keras.layers.Conv1DTranspose(filters=70, kernel_size=3, strides=2,padding= 'same', activation=act), # Reverse of NiN
             tf.keras.layers.Conv1DTranspose(filters=250, kernel_size=3, strides=2,padding= 'same', activation=act),
             tf.keras.layers.Conv1DTranspose(filters=500, kernel_size=3, strides=2,padding= 'valid', activation=act),
-            tf.keras.layers.Conv1DTranspose(filters=self.output_size, kernel_size=3, strides=2, padding= 'same', activation=act), # Reverse of kernel 3
+            tf.keras.layers.Conv1DTranspose(filters=self.output_size, kernel_size=3, strides=2, padding= 'same', activation=activations.sigmoid), # Reverse of kernel 3
             #tf.keras.layers.Conv1DTranspose(filters=250, kernel_size=3, strides=2, padding='same', activation=act), # Reverse of kernel 3 and stride 2
             #tf.keras.layers.Conv1DTranspose(filters=500, kernel_size=3, strides=2, padding='same') # Reverse of kernel 3 and stride 2
         ])
@@ -174,14 +164,14 @@ class Network(tf.keras.Model):
     
     
 
-
+#for lat_dim in range(1,10,1):
 hyperparameters = {
-   'input_size' : x_train_tf.shape[1:],
-   'hidden_size' : 256,  # dimension of hidden layers
-   'n_hidden_layers': 3,  # number of hidden layers
-   'output_size': x_train_tf.shape[-1],
-   'activation': 'relu',
-   'latent_dim': 4
+'input_size' : x_train_tf.shape[1:],
+'hidden_size' : 256,  # dimension of hidden layers
+'n_hidden_layers': 3,  # number of hidden layers
+'output_size': x_train_tf.shape[-1],
+'activation': 'relu',
+'latent_dim': 4
 }
 autoencoder = Network(hyperparameters)
 
@@ -190,9 +180,9 @@ autoencoder.compile(optimizer='adam', loss=losses.MeanSquaredError(), metrics=['
 
 #training 
 history = autoencoder.fit(x_train_tf, x_train_tf,
-                  epochs=50,
-                  shuffle=True,
-                  validation_data=(x_test_tf, x_test_tf))
+                epochs=100,
+                shuffle=True,
+                validation_data=(x_test_tf, x_test_tf))
 
 autoencoder.encoder.summary()
 
@@ -203,3 +193,27 @@ plt.plot(history.history["val_loss"], label="Validation Loss")
 plt.title(f'Training Loss VS Validation Loss - Latent Dim = %d' % i)
 plt.legend()
 plt.show()
+
+x_reconstructed = autoencoder.predict(x_test_tf)
+print(x_reconstructed.shape)
+
+x_test = x_test_tf.numpy()
+
+# Plot and save original vs reconstructed profiles
+n = 10  # How many profiles we will display
+plt.figure(figsize=(20, 4))
+plt.axis("off")
+#plt.title(f'Examples of fit with latent dimension = {i}')
+for j in range(n):
+    # Display original
+    ax = plt.subplot(2, n, j + 1)
+    plt.scatter(r, x_test[j].reshape(-1, n_points)[0])
+    plt.gray()
+
+    # Display reconstruction
+    ax = plt.subplot(2, n, j + 1 + n)
+    plt.scatter(r, x_reconstructed[j].reshape(-1, n_points)[0])
+    plt.gray()
+
+plt.show()
+
