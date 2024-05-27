@@ -8,7 +8,7 @@ import re
 
 from sklearn.metrics import accuracy_score, precision_score, recall_score
 from sklearn.model_selection import train_test_split
-from tensorflow.keras import  losses, layers
+from tensorflow.keras import  losses, layers, activations
 from tensorflow.keras.datasets import fashion_mnist
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input, Conv1D, MaxPooling1D, UpSampling1D
@@ -17,6 +17,12 @@ from tensorflow.keras.datasets import mnist
 from tensorflow.keras import backend as K
 
 
+
+
+###
+# salvare i grafici nella catella in modo da averli tutti insieme
+# aumentare le epoche  (early stopping dopo 10 volte che la loss è ugaule si ferma)( nel fit della rete, callback)
+# provare con tutte le cartelle 
 
 # define the current working directory
 cwd = os.getcwd()  
@@ -34,8 +40,8 @@ cwd = os.getcwd()
 
 dir_names=['MESA-Web_M07_Z00001','MESA-Web_M1_Z0001']
 column_filter = ['mass','radius', 'initial_mass', 'initial_z', 'star_age', 'logRho','logT','Teff','energy','photosphere_L', 'photosphere_r', 'star_mass','h1','he3','he4']
-column_filter_train = ['mass','radius', 'logRho','logT','energy','h1','he3','he4']
-n_points=50
+column_filter_train = ['mass','radius', 'logRho','logT','energy','h1','he3','he4']  ## considero solo logrho?
+n_points=50   # n of points to sample from each profile
 r=np.linspace(0,1,n_points)
 
 
@@ -82,7 +88,7 @@ for i,dir_name in enumerate(dir_names):
     else:
       linear_train_df=pd.concat([linear_train_df,train_df],axis=1)
 
-print(linear_train_df.shape)
+print('linear train_df shape:', linear_train_df.shape)
 print(linear_train_df)
 
 #for i in range(linear_train_df.shape[1]):
@@ -119,7 +125,7 @@ class Network(tf.keras.Model):
         self.hyperparameters = hyperparameters
         
         self.input_size = hyperparameters['input_size']
-        self.hidden_size = hyperparameters['hidden_size']
+        #self.hidden_size = hyperparameters['hidden_size']
         self.output_size = hyperparameters['output_size']
         self.activation = hyperparameters['activation']
         self.latent_dim = hyperparameters['latent_dim']
@@ -177,29 +183,60 @@ class Network(tf.keras.Model):
 
 hyperparameters = {
    'input_size' : x_train_tf.shape[1:],
-   'hidden_size' : 256,  # dimension of hidden layers
-   'n_hidden_layers': 3,  # number of hidden layers
+   #'hidden_size' : 256,  # dimension of hidden layers
+   #'n_hidden_layers': 3,  # number of hidden layers
    'output_size': x_train_tf.shape[-1],
-   'activation': 'relu',
+   'activation': 'leakyrelu',
    'latent_dim': 4
 }
-autoencoder = Network(hyperparameters)
 
-# compile
-autoencoder.compile(optimizer='adam', loss=losses.MeanSquaredError(), metrics=['accuracy'])
+for latent_dim in range(1, 11):
+    print(f"\nTraining with latent dim = {latent_dim}")
+    hyperparameters['latent_dim'] = latent_dim
+    autoencoder = Network(hyperparameters)
 
-#training 
-history = autoencoder.fit(x_train_tf, x_train_tf,
-                  epochs=50,
-                  shuffle=True,
-                  validation_data=(x_test_tf, x_test_tf))
+    # compile
+    autoencoder.compile(optimizer='adam', loss=losses.MeanSquaredError(), metrics=['accuracy'])
 
-autoencoder.encoder.summary()
+    # training 
+    history = autoencoder.fit(x_train_tf, x_train_tf,
+                              epochs=50,
+                              shuffle=True,
+                              validation_data=(x_test_tf, x_test_tf),
+                              callbacks=[tf.keras.callbacks.EarlyStopping(monitor= 'val_loss', patience= 10)] )
+    
+    print(f"Latent Dim = {latent_dim}:")
+    print("Loss history:", history.history['loss'])
+    print("VCalidation Loss histry:", history.history['val_loss'])
 
-autoencoder.decoder.summary()
+    autoencoder.encoder.summary()
+    autoencoder.decoder.summary()
 
-plt.plot(history.history["loss"], label="Training Loss")
-plt.plot(history.history["val_loss"], label="Validation Loss")
-plt.title(f'Training Loss VS Validation Loss - Latent Dim = %d' % i)
-plt.legend()
-plt.show()
+    plt.plot(history.history["loss"], label="Training Loss")
+    plt.plot(history.history["val_loss"], label="Validation Loss")
+    plt.title(f'Training Loss VS Validation Loss - Latent Dim = {latent_dim}')
+    plt.legend()
+    plt.show()
+
+    x_reconstructed = autoencoder.predict(x_test_tf)
+    print('Shape of x_recontructed:', x_reconstructed.shape)
+
+# Plot and save original vs reconstructed profiles
+    n = 10  # How many profiles we will display
+    plt.figure(figsize=(20, 4))
+    plt.axis("off")
+    plt.title(f'Examples of fit with latent dimension = {latent_dim}')
+    for j in range(n):
+        # Display original
+        ax = plt.subplot(2, n, j + 1)
+        plt.scatter(r, x_test_tf.numpy()[j].reshape(-1, n_points)[0])
+        plt.gray()
+
+        # Display reconstruction
+        ax = plt.subplot(2, n, j + 1 + n)
+        plt.scatter(r, x_reconstructed[j].reshape(-1, n_points)[0])
+        plt.gray()
+
+    plt.show()
+
+    
