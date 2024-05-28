@@ -196,7 +196,7 @@ for latent_dim in range(1, 11):
     autoencoder = Network(hyperparameters)
 
     # compile
-    autoencoder.compile(optimizer='adam', loss=losses.MeanSquaredError(), metrics=['accuracy'])
+    autoencoder.compile(optimizer='adam', loss=losses.MeanSquaredError())
 
     # training 
     history = autoencoder.fit(x_train_tf, x_train_tf,
@@ -221,22 +221,63 @@ for latent_dim in range(1, 11):
     x_reconstructed = autoencoder.predict(x_test_tf)
     print('Shape of x_recontructed:', x_reconstructed.shape)
 
-# Plot and save original vs reconstructed profiles
-    n = 10  # How many profiles we will display
-    plt.figure(figsize=(20, 4))
-    plt.axis("off")
-    plt.title(f'Examples of fit with latent dimension = {latent_dim}')
+
+
+    # Plot the original and reconstructed data
+    n = 10
+    plt.figure(figsize= (18,8))
+    plt.suptitle(f'Examples of fit with latent dimention = {latent_dim}', fontsize= 16)
     for j in range(n):
+        ax= plt.subplot(2, n, j + 1)
+        plt.scatter(r, x_test_tf.numpy()[j].reshape(-1, n_points)[0], color= 'blue', label='Original', s= 7)
+        plt.scatter(r, x_reconstructed[j].reshape(-1, n_points)[0], color= 'red', label = 'Reconstructed', s= 7)
+        if j == 0:
+            plt.legend(loc='best')
+        plt.axis('on')
+        if j ==0:
+            plt.ylabel('Original vs Recostructed')
+
+    # Display the difference
+        ax= plt.subplot(2, n, j+1+n)
+        difference= x_test_tf.numpy()[j].reshape(-1, n_points)[0] - x_reconstructed[j].reshape(-1, n_points)[0]       
+        mean_difference = np.mean(difference)
+        plt.scatter(r, difference, color='green', s=7, label = 'Difference')
+        plt.axhline(0, color='black', linewidth=0.5)
+        plt.axhline(mean_difference, color ='darkred', linestyle='--', linewidth = 1.5, label ='Mean difference')
+       
+        if j == 0:
+            plt.ylabel('Difference')
+            plt.legend(loc= 'best')
+        plt.axis("on")
+
+    #plt.tight_layout(rect=[0, 0, 1, 0.95], w_pad = 0.5) 
+    plt.show()
+
+
+
+
+
+
+
+
+
+
+# Plot and save original vs reconstructed profiles
+    #n = 10  # How many profiles we will display
+    #plt.figure(figsize=(20, 4))
+    #plt.axis("off")
+    #plt.title(f'Examples of fit with latent dimension = {latent_dim}')
+    #for j in range(n):
         # Display original
-        ax = plt.subplot(2, n, j + 1)
-        plt.scatter(r, x_test_tf.numpy()[j].reshape(-1, n_points)[0])
-        plt.gray()
+        #ax = plt.subplot(2, n, j + 1)
+        #plt.scatter(r, x_test_tf.numpy()[j].reshape(-1, n_points)[0])
+        ##plt.gray()
 
         # Display reconstruction
-        ax = plt.subplot(2, n, j + 1 + n)
-        plt.scatter(r, x_reconstructed[j].reshape(-1, n_points)[0])
-        plt.gray()
+        #ax = plt.subplot(2, n, j + 1 + n)
+        #plt.scatter(r, x_reconstructed[j].reshape(-1, n_points)[0])
+        #plt.gray()
 
-    plt.show()
+    #plt.show()
 
     
