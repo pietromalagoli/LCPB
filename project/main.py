@@ -15,10 +15,10 @@ from tqdm import tqdm
 
 ##########IMPORT PARAMETERS##########
 cwd = os.getcwd()
-dir_names = ['MESA-Web_M07_Z00001', 'MESA-Web_M10_Z002']  # type 'all' if you want to use all the data
+dir_names = ['all']  # type 'all' if you want to use all the data
 column_filter = ['mass', 'radius', 'initial_mass', 'initial_z', 'star_age', 'logRho', 'logT',
                  'Teff', 'energy', 'photosphere_L', 'photosphere_r', 'star_mass', 'h1', 'he3', 'he4']
-column_filter_train = ['logRho','mass']  # radius is not included for coding reasons but is still considered
+column_filter_train = ['logRho','logT']  # radius is not included for coding reasons but is still considered
 n_points = 100  # n of points to sample from each profile
 r = np.linspace(0, 1, n_points + 1)[1:]  # values of normalized r on which to take the values of the variables
 
@@ -139,7 +139,6 @@ for i in range(1, 10):
     plt.close()
 
     x_reconstructed = autoencoder.predict(x_test)
-    print(x_reconstructed.shape)
 
     # Plot and save original vs reconstructed profiles
     n=5
@@ -150,13 +149,9 @@ for i in range(1, 10):
         plt.title(f'Examples of fit of feature {feature} with latent dimension = {i}')
         # Display original
         for j in range(n):
-            print(x_test)
-            print(x_test.shape)
             original_data=x_test[j,k*n_points:(k+1)*n_points]
-            print(original_data.shape)
             reconstructed_data=x_reconstructed[j,k*n_points:(k+1)*n_points]
-            print(reconstructed_data.shape)
-            diff=original_data-reconstructed_data
+            red_diff=(reconstructed_data-original_data)/original_data
 
             ax = plt.subplot(2, n, j + 1)
             plt.scatter(r, original_data,c="blue",label="original")
@@ -166,7 +161,7 @@ for i in range(1, 10):
 
             #Display reconstruction
             ax = plt.subplot(2, n, j + 1 + n)
-            plt.scatter(r, diff,label="Original-Reconstructed",c="green")
+            plt.scatter(r, red_diff,label="Original-Reconstructed",c="green")
             plt.legend()
             plt.gray()
 
