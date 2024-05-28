@@ -230,7 +230,7 @@ for slope in np.arange(0.1, 0.6, 0.1):
         print('Shape of x_recontructed:', x_reconstructed.shape)
 
         # Plot the original and reconstructed data
-        n = 10
+        n = 5
         plt.figure(figsize= (18,8))
         plt.suptitle(f'Examples of fit with latent dimention = {latent_dim}', fontsize= 16)
         for j in range(n):
