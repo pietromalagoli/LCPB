@@ -15,6 +15,8 @@ from tensorflow.keras.layers import Input, Conv1D, MaxPooling1D, UpSampling1D
 from scipy.interpolate import UnivariateSpline
 from tensorflow.keras.datasets import mnist
 from tensorflow.keras import backend as K
+from tqdm import tqdm 
+
 
 
 
@@ -38,16 +40,20 @@ cwd = os.getcwd()
 #print("Filtered directory names:")
 #print(dir_names)
 
-dir_names=['MESA-Web_M07_Z00001','MESA-Web_M1_Z0001']
+dir_names=['all']
 column_filter = ['mass','radius', 'initial_mass', 'initial_z', 'star_age', 'logRho','logT','Teff','energy','photosphere_L', 'photosphere_r', 'star_mass','h1','he3','he4']
 column_filter_train = ['mass','radius', 'logRho','logT','energy','h1','he3','he4']  ## considero solo logrho?
 n_points=50   # n of points to sample from each profile
 r=np.linspace(0,1,n_points)
 
+if dir_names[0] == 'all':
+    dir_names = ['MESA-Web_M07_Z00001', 'MESA-Web_M07_Z002', 'MESA-Web_M10_Z002', 'MESA-Web_M10_Z0001',
+                 'MESA-Web_M10_Z00001', 'MESA-Web_M15_Z0001', 'MESA-Web_M15_Z00001', 'MESA-Web_M30_Z00001',
+                 'MESA-Web_M30_Z002', 'MESA-Web_M50_Z00001', 'MESA-Web_M50_Z002', 'MESA-Web_M50_Z001',
+                 'MESA-Web_M5_Z002', 'MESA-Web_M5_Z0001', 'MESA-Web_M1_Z00001', 'MESA-Web_M1_Z0001']
 
-for i,dir_name in enumerate(dir_names):
+for i,dir_name in enumerate(tqdm(dir_names, desc="Importing data from directories")):
 
-  print(f"####\t\tIMPORTING DATA FROM FOLDER {dir_name}\t\t####")
   dir_name=os.path.join(cwd,'StellarTracks',dir_name)
 
   def extract_number(filename):
@@ -57,9 +63,8 @@ for i,dir_name in enumerate(dir_names):
   filenames=[filename for filename in os.listdir(dir_name) if re.fullmatch('profile[0-9]+\.data',filename)]
   filenames=sorted(filenames, key=extract_number) #sort the elements according to the number in the name
 
-  for j,filename in enumerate(filenames):
+  for j,filename in enumerate(tqdm(filenames, desc=f"Importing from {dir_name}", leave=False)):
 
-    print(f"####\t\t\tIMPORTING FILE {filename}\t\t\t####")  
     filename=os.path.join(dir_name,filename)
 
     data=mw.read_profile(filename)
@@ -89,7 +94,7 @@ for i,dir_name in enumerate(dir_names):
       linear_train_df=pd.concat([linear_train_df,train_df],axis=1)
 
 print('linear train_df shape:', linear_train_df.shape)
-print(linear_train_df)
+#print(linear_train_df)
 
 #for i in range(linear_train_df.shape[1]):
 #  plt.plot(r,linear_train_df[f"log_rho_{i}"])
@@ -98,8 +103,8 @@ print(linear_train_df)
 x_train, x_test = train_test_split(linear_train_df.T, test_size=0.2)
 print ('train shape :', x_train.shape) # (69, 50)
 print ('test shape:', x_test.shape) #(18, 50)
-print(x_train)
-print(x_test)
+#print(x_train)
+#print(x_test)
 
 
 # Reshape the data to match the input shape expected by the model
@@ -212,11 +217,13 @@ for latent_dim in range(1, 11):
     autoencoder.encoder.summary()
     autoencoder.decoder.summary()
 
+    # Save loss graphs
+    file_save_dir = os.path.join(os.getcwd(), "Graphs", f"TrainValLoss_dim_{i}.png")
     plt.plot(history.history["loss"], label="Training Loss")
     plt.plot(history.history["val_loss"], label="Validation Loss")
     plt.title(f'Training Loss VS Validation Loss - Latent Dim = {latent_dim}')
-    plt.legend()
-    plt.show()
+    plt.savefig(file_save_dir)
+    plt.close()
 
     x_reconstructed = autoencoder.predict(x_test_tf)
     print('Shape of x_recontructed:', x_reconstructed.shape)
@@ -224,7 +231,7 @@ for latent_dim in range(1, 11):
 
 
     # Plot the original and reconstructed data
-    n = 10
+    n = 5
     plt.figure(figsize= (18,8))
     plt.suptitle(f'Examples of fit with latent dimention = {latent_dim}', fontsize= 16)
     for j in range(n):
@@ -250,13 +257,14 @@ for latent_dim in range(1, 11):
             plt.legend(loc= 'best')
         plt.axis("on")
 
-    #plt.tight_layout(rect=[0, 0, 1, 0.95], w_pad = 0.5) 
-    plt.show()
+    file_save_dir = os.path.join(os.getcwd(), "Graphs", f"OriginalReconstructed_{latent_dim}.png")
+    plt.savefig(file_save_dir)
+    plt.close()
 
 
 
 
-
+ 
 
 
 
