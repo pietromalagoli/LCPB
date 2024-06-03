@@ -8,8 +8,8 @@ from tqdm import tqdm
 import os 
 import re
 
-from sklearn.metrics import accuracy_score, precision_score, recall_score
-from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, precision_score, recall_score, make_scorer, mean_squared_error
+from sklearn.model_selection import train_test_split, GridSearchCV
 from keras import  losses, layers, activations
 from keras.datasets import fashion_mnist
 from keras.models import Model
@@ -40,7 +40,7 @@ cwd = os.getcwd()
 #print("Filtered directory names:")
 #print(dir_names)
 
-dir_names=['all']
+dir_names=['MESA-Web_M07_Z00001', 'MESA-Web_M07_Z002', 'MESA-Web_M10_Z002']
 column_filter = ['mass','radius', 'initial_mass', 'initial_z', 'star_age', 'logRho','logT','Teff','energy','photosphere_L', 'photosphere_r', 'star_mass','h1','he3','he4']
 column_filter_train = ['mass','radius', 'logRho','logT','energy','h1','he3','he4']  ## considero solo logrho?
 n_points=50   # n of points to sample from each profile
@@ -123,138 +123,196 @@ print("x_test_tf shape:", x_test_tf.shape)
 
 
 
-for slope in np.arange(0.1, 0.6, 0.1):
-    print("ReLU slope:", slope)
-    class Network(tf.keras.Model):
-        def __init__(self, hyperparameters):
-            super(Network, self).__init__()
+slope = 0.4 # Best performing ReLU slope found
+class Network(tf.keras.Model):
+    def __init__(self, hyperparameters):
+        super(Network, self).__init__()
 
-            # The hyperparameters of the network are saved for reproduction
-            self.hyperparameters = hyperparameters
-            
-            self.input_size = hyperparameters['input_size']
-            #self.hidden_size = hyperparameters['hidden_size']
-            self.output_size = hyperparameters['output_size']
-            self.activation = hyperparameters['activation']
-            self.latent_dim = hyperparameters['latent_dim']
-
-            if (self.activation == 'relu'):
-                act = tf.keras.layers.ReLU()
-            if (self.activation == 'elu'):
-                act = tf.keras.layers.ELU()
-            if (self.activation == 'leakyrelu'):
-                act = tf.keras.layers.LeakyReLU(slope)
-
-            # Define the layers of the network ( encoder and decoder)
-            
-            self.encoder = tf.keras.Sequential([
-                tf.keras.layers.Conv1D(filters=500, kernel_size=3, strides=2, padding='valid', activation=act), # 1D 128 kernels of length=36  ##filters -> dimesion of output space
-                tf.keras.layers.Conv1D(filters=250, kernel_size=3, strides=2, padding='same', activation=act),
-                tf.keras.layers.Conv1D(filters=70, kernel_size=3, strides=2, padding='same', activation=act),
-                tf.keras.layers.Conv1D(filters=self.latent_dim, kernel_size=3, strides=2, padding='same', activation=act), # 1D 4*64 kernels of length=18
-                #tf.keras.layers.Conv1D(filters=75, kernel_size=3, strides=1, activation=act), # 1D 128 kernels of length=1
-                #tf.keras.layers.Conv1D(filters=self.latent_dim, kernel_size=1, strides=1) # NiN 
-                
-            ])
-
-            self.decoder = tf.keras.Sequential([
-                tf.keras.layers.Conv1DTranspose(filters=70, kernel_size=3, strides=2,padding= 'same', activation=act), # Reverse of NiN
-                tf.keras.layers.Conv1DTranspose(filters=250, kernel_size=3, strides=2,padding= 'same', activation=act),
-                tf.keras.layers.Conv1DTranspose(filters=500, kernel_size=3, strides=2,padding= 'valid', activation=act),
-                tf.keras.layers.Conv1DTranspose(filters=self.output_size, kernel_size=3, strides=2, padding= 'same', activation=act), # Reverse of kernel 3
-                #tf.keras.layers.Conv1DTranspose(filters=250, kernel_size=3, strides=2, padding='same', activation=act), # Reverse of kernel 3 and stride 2
-                #tf.keras.layers.Conv1DTranspose(filters=500, kernel_size=3, strides=2, padding='same') # Reverse of kernel 3 and stride 2
-            ])
-
-            
-        def call(self, x):
-            """
-            Evaluate the network
-
-            Parameters
-            ----------
-            x : tensor
-                Input tensor
-
-            Returns
-            -------
-            tensor
-                Output tensor
-            """       
-            encoded = self.encoder(x)
-            decoded= self.decoder(encoded)
-            
-            return decoded
+        # The hyperparameters of the network are saved for reproduction
+        self.hyperparameters = hyperparameters
         
+        self.input_size = hyperparameters['input_size']
+        #self.hidden_size = hyperparameters['hidden_size']
+        self.output_size = hyperparameters['output_size']
+        self.activation = hyperparameters['activation']
+        self.latent_dim = hyperparameters['latent_dim']
+        self.filters = hyperparameters['filters']
+        self.padding = hyperparameters['padding']
+
+        if (self.activation == 'relu'):
+            act = tf.keras.layers.ReLU()
+        if (self.activation == 'elu'):
+            act = tf.keras.layers.ELU()
+        if (self.activation == 'leakyrelu'):
+            act = tf.keras.layers.LeakyReLU(slope)
+
+        # Define the layers of the network ( encoder and decoder)
         
+        self.encoder = tf.keras.Sequential([
+            tf.keras.layers.Conv1D(filters=self.filters[0], kernel_size=3, strides=2, padding=self.padding[0], activation=act), # 1D 128 kernels of length=36  ##filters -> dimesion of output space
+            tf.keras.layers.Conv1D(filters=self.filters[1], kernel_size=3, strides=2, padding=self.padding[1], activation=act),
+            tf.keras.layers.Conv1D(filters=self.filters[2], kernel_size=3, strides=2, padding=self.padding[1], activation=act),
+            tf.keras.layers.Conv1D(filters=self.latent_dim, kernel_size=3, strides=2, padding=self.padding[1], activation=act), # 1D 4*64 kernels of length=18            
+        ])
 
+        self.decoder = tf.keras.Sequential([
+            tf.keras.layers.Conv1DTranspose(filters=self.filters[2], kernel_size=3, strides=2,padding= self.padding[1], activation=act), # Reverse of NiN
+            tf.keras.layers.Conv1DTranspose(filters=self.filters[1], kernel_size=3, strides=2,padding= self.padding[1], activation=act),
+            tf.keras.layers.Conv1DTranspose(filters=self.filters[0], kernel_size=3, strides=2,padding= self.padding[0], activation=act),
+            tf.keras.layers.Conv1DTranspose(filters=self.output_size, kernel_size=3, strides=2, padding= self.padding[1], activation=act), # Reverse of kernel 3
+        ])
 
-    hyperparameters = {
-    'input_size' : x_train_tf.shape[1:],
-    #'hidden_size' : 256,  # dimension of hidden layers
-    #'n_hidden_layers': 3,  # number of hidden layers
-    'output_size': x_train_tf.shape[-1],
-    'activation': 'leakyrelu',
-    'latent_dim': 4
-    }
-
-    for latent_dim in range(5, 6):
-        print(f"\nTraining with latent dim = {latent_dim}")
-        hyperparameters['latent_dim'] = latent_dim
-        autoencoder = Network(hyperparameters)
-
-        # compile
-        autoencoder.compile(optimizer='adam', loss=losses.MeanSquaredError())
-
-        # training 
-        history = autoencoder.fit(x_train_tf, x_train_tf,
-                                epochs=100,
-                                shuffle=True,
-                                validation_data=(x_test_tf, x_test_tf),
-                                callbacks=[tf.keras.callbacks.EarlyStopping(monitor= 'val_loss', patience= 10, verbose = 1)] )
         
-        print(f"Latent Dim = {latent_dim}:")
-        print("Loss history:", history.history['loss'])
-        print("Validation Loss history:", history.history['val_loss'])
+    def call(self, x):
+        """
+        Evaluate the network
 
-        autoencoder.encoder.summary()
-        autoencoder.decoder.summary()
+        Parameters
+        ----------
+        x : tensor
+            Input tensor
 
-        plt.plot(history.history["loss"], label="Training Loss")
-        plt.plot(history.history["val_loss"], label="Validation Loss")
-        plt.title(f'Training Loss VS Validation Loss - Latent Dim = {latent_dim}')
-        plt.legend()
-        plt.show()
-
-        x_reconstructed = autoencoder.predict(x_test_tf)
-        print('Shape of x_recontructed:', x_reconstructed.shape)
-
-        # Plot the original and reconstructed data
-        n = 5
-        plt.figure(figsize= (18,8))
-        plt.suptitle(f'Examples of fit with latent dimention = {latent_dim}', fontsize= 16)
-        for j in range(n):
-            ax= plt.subplot(2, n, j + 1)
-            plt.scatter(r, x_test_tf.numpy()[j].reshape(-1, n_points)[0], color= 'blue', label='Original', s= 7)
-            plt.scatter(r, x_reconstructed[j].reshape(-1, n_points)[0], color= 'red', label = 'Reconstructed', s= 7)
-            if j == 0:
-                plt.legend(loc='best')
-            plt.axis('on')
-            if j ==0:
-                plt.ylabel('Original vs Recostructed')
-            # Display the difference
-            ax= plt.subplot(2, n, j+1+n)
-            difference= x_test_tf.numpy()[j].reshape(-1, n_points)[0] - x_reconstructed[j].reshape(-1, n_points)[0]       
-            mean_difference = np.mean(difference)
-            plt.scatter(r, difference, color='green', s=7, label = 'Difference')
-            plt.axhline(0, color='black', linewidth=0.5)
-            plt.axhline(mean_difference, color ='darkred', linestyle='--', linewidth = 1.5, label ='Mean difference')
+        Returns
+        -------
+        tensor
+            Output tensor
+        """       
+        encoded = self.encoder(x)
+        decoded= self.decoder(encoded)
         
-            if j == 0:
-                plt.ylabel('Difference')
-                plt.legend(loc= 'best')
-            plt.axis("on")
+        return decoded
 
-        plt.show()
+    ## Ho copiato il metodo get_param_names() di svm.SVC()
+    @classmethod
+    def _get_param_names(cls):
+        """Get parameter names for the estimator"""
+        # fetch the constructor or the original constructor before
+        # deprecation wrapping if any
+        init = getattr(cls.__init__, "deprecated_original", cls.__init__)
+        if init is object.__init__:
+            # No explicit constructor to introspect
+            return []
 
+        # introspect the constructor arguments to find the model parameters
+        # to represent
+        init_signature = inspect.signature(init)
+        # Consider the constructor parameters excluding 'self'
+        parameters = [
+            p
+            for p in init_signature.parameters.values()
+            if p.name != "self" and p.kind != p.VAR_KEYWORD
+        ]
+        for p in parameters:
+            if p.kind == p.VAR_POSITIONAL:
+                raise RuntimeError(
+                    "scikit-learn estimators should always "
+                    "specify their parameters in the signature"
+                    " of their __init__ (no varargs)."
+                    " %s with constructor %s doesn't "
+                    " follow this convention." % (cls, init_signature)
+                )
+        # Extract and sort argument names excluding 'self'
+        return sorted([p.name for p in parameters])
+    
+    ## Ho copiato il metodo get_params() di svm.SVC()
+    def get_params(self, deep=True):
+        """
+        Get parameters for this estimator.
+
+        Parameters
+        ----------
+        deep : bool, default=True
+            If True, will return the parameters for this estimator and
+            contained subobjects that are estimators.
+
+        Returns
+        -------
+        params : dict
+            Parameter names mapped to their values.
+        """
+        out = dict()
+        for key in self._get_param_names():
+            value = getattr(self, key)
+            if deep and hasattr(value, "get_params") and not isinstance(value, type):
+                deep_items = value.get_params().items()
+                out.update((key + "__" + k, val) for k, val in deep_items)
+            out[key] = value
+        return out
+    
+    
+filters = np.array([500, 250, 70])
+
+hyperparameters = {
+'input_size' : x_train_tf.shape[1:],
+'filters' : filters,
+'output_size': x_train_tf.shape[-1],
+'activation': 'leakyrelu',
+'latent_dim': 4,
+'padding': np.array(['valid', 'same'])
+}
+
+
+autoencoder = Network(hyperparameters)
+
+# compile
+autoencoder.compile(optimizer='adam', loss=losses.MeanSquaredError())
+
+# training 
+history = autoencoder.fit(x_train_tf, x_train_tf,
+                        epochs=100,
+                        shuffle=True,
+                        validation_data=(x_test_tf, x_test_tf),
+                        callbacks=[tf.keras.callbacks.EarlyStopping(monitor= 'val_loss', patience= 20, verbose = 1)] )
+
+print(f"Latent Dim = {hyperparameters['latent_dim']}:")
+print("Loss history:", history.history['loss'])
+print("Validation Loss history:", history.history['val_loss'])
+
+autoencoder.encoder.summary()
+autoencoder.decoder.summary()
+
+plt.plot(history.history["loss"], label="Training Loss")
+plt.plot(history.history["val_loss"], label="Validation Loss")
+plt.title(f'Training Loss VS Validation Loss - Latent Dim = {hyperparameters['latent_dim']}')
+plt.legend()
+plt.show()
+
+x_reconstructed = autoencoder.predict(x_test_tf)
+print('Shape of x_recontructed:', x_reconstructed.shape)
+
+# Plot the original and reconstructed data
+n = 5
+plt.figure(figsize= (18,8))
+plt.suptitle(f'Examples of fit with latent dimention = {hyperparameters['latent_dim']}', fontsize= 16)
+for j in range(n):
+    ax= plt.subplot(2, n, j + 1)
+    plt.scatter(r, x_test_tf.numpy()[j].reshape(-1, n_points)[0], color= 'blue', label='Original', s= 7)
+    plt.scatter(r, x_reconstructed[j].reshape(-1, n_points)[0], color= 'red', label = 'Reconstructed', s= 7)
+    if j == 0:
+        plt.legend(loc='best')
+    plt.axis('on')
+    if j ==0:
+        plt.ylabel('Original vs Recostructed')
+    # Display the difference
+    ax= plt.subplot(2, n, j+1+n)
+    difference= x_test_tf.numpy()[j].reshape(-1, n_points)[0] - x_reconstructed[j].reshape(-1, n_points)[0]       
+    mean_difference = np.mean(difference)
+    plt.scatter(r, difference, color='green', s=7, label = 'Difference')
+    plt.axhline(0, color='black', linewidth=0.5)
+    plt.axhline(mean_difference, color ='darkred', linestyle='--', linewidth = 1.5, label ='Mean difference')
+
+    if j == 0:
+        plt.ylabel('Difference')
+        plt.legend(loc= 'best')
+    plt.axis("on")
+
+plt.show()
+
+################## GRID SEARCH ########################
+
+hyperparameters = {'latent_dim':(3,4,5,6), 'padding':('valid', 'same')}
+
+clf = GridSearchCV(autoencoder, hyperparameters, scoring = make_scorer(mean_squared_error))
+clf.fit(x_train_tf, None)
+clf
     
