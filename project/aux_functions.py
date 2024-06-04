@@ -82,6 +82,8 @@ def train_autoencoder(all_profiles,encoder_neurons_in,activation,optimizer,loss,
     print(x_train.shape)
     print(x_test.shape)
 
+    avg_final_val_loss=[]
+
     for i in range(1, 6):
         ###Autoencoder parameters
         encoder_neurons = encoder_neurons_in.copy()  # last value should be the latent dimension
@@ -102,7 +104,7 @@ def train_autoencoder(all_profiles,encoder_neurons_in,activation,optimizer,loss,
                                 epochs=1000,
                                 shuffle=True,
                                 validation_data=(x_test, x_test),
-                                callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=10)])
+                                callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=15)])
         
         if plot_loss:
             aux.plot_loss(history,i,folder)
@@ -112,8 +114,12 @@ def train_autoencoder(all_profiles,encoder_neurons_in,activation,optimizer,loss,
 
         if save_model:
             aux.save_model(autoencoder,i,folder)
+
+        len_history=len(history.history['val_loss'])
+        points_mean=min(len_history,15)
+        avg_final_val_loss.append(history.history['val_loss'][len_history-points_mean:len_history-1])
         
-    return autoencoder
+    return autoencoder, avg_final_val_loss
 
 def plot_loss(history,i,folder):
     # Save loss graphs
