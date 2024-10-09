@@ -31,11 +31,14 @@ if dir_names[0] == 'all':
                  'MESA-Web_M5_Z002', 'MESA-Web_M5_Z0001', 'MESA-Web_M1_Z00001', 'MESA-Web_M1_Z0001']
     
 ##HYPERPARAMETERS
-encoder_neurons_list=[[100],
-                      [200,100],
-                      [500,250,100],
-                      [500,250,100,50],
-                      [500,400,300,200,100,50]]    #without hidden dimension
+encoder_neurons_list=[[20],
+                      [50],
+                      [100],
+                      [50,20],
+                      [200,100]]#,
+                      #[500,250,100],
+                      #[500,250,100,50],
+                      #[500,400,300,200,100,50]]    #without hidden dimension
 activations=['leaky_relu']    #same for each layer
 optimizers=['nadam']#'adam','rmsprop','sgd','adagrad','nadam']
 losses=[losses.MeanSquaredError()]
@@ -109,4 +112,15 @@ Best activation: leaky_relu
 Best Optimizer: adam      
 Best Loss: mean_squared_error      
 Best Avg Final Loss: 0.007384953488196645  
+"""
+
+"""
+ANOTHER TRY
+
+Best Encoder Neurons: [100]      
+Best latent dimension: 3      
+Best activation: leaky_relu      
+Best Optimizer: nadam      
+Best Loss: mean_squared_error      
+Best Avg Final Loss: 0.010078218765556812
 """
