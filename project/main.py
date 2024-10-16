@@ -17,7 +17,7 @@ from tqdm import tqdm
 
 ##########IMPORT PARAMETERS##########
 cwd = os.getcwd()
-dir_names = ['MESA-Web_M07_Z00001']  # type 'all' if you want to use all the data
+dir_names = ['all']  # type 'all' if you want to use all the data
 column_filter = ['mass', 'radius', 'initial_mass', 'initial_z', 'star_age', 'logRho', 'logT',
                  'Teff', 'energy', 'photosphere_L', 'photosphere_r', 'star_mass', 'h1', 'he3', 'he4']
 column_filter_train = ['logRho']  # radius is not included for coding reasons but is still considered
@@ -35,12 +35,31 @@ encoder_neurons_list=[[20],
                       [50],
                       [100],
                       [50,20],
-                      [200,100]]#,
-                      #[500,250,100]],
+                      [200,100],
+                      [500,250,100]]#,
                       #[500,250,100,50],
                       #[500,400,300,200,100,50]]    #without hidden dimension
-activations=['leaky_relu','relu']    #same for each layer
-optimizers=['nadam','adam','rmsprop','sgd','adagrad']
+activations=['leaky_relu']
+                    #leaky relu good
+                    #relu terrible, doesn't learn
+                    #gelu is same as relu
+                    #softplus very slow learning
+                    #elu bad
+                    #selu learns at first but then stops
+                    #silu learns slowly then stops
+
+optimizers=['nadam','adam','adamw','rmsprop']
+                    #nadam is good
+                    #adam is good as well
+                    #rmsprop works well
+                    #sgd works but sensibly worse than the others
+                    #adagrad doesn't work
+                    #adadelta slow learning
+                    #ftrl doesn't work
+                    #adamax works but doesn't reach low error like the others
+                    #adamw is pretty good
+                    #lion like adamax
+
 losses=[losses.MeanSquaredError()]
 
 ##CODE
@@ -66,6 +85,7 @@ for encoder_neurons in encoder_neurons_list:
                 for i in encoder_neurons:
                     string_neurons += f"{i}_"
                 folder = os.path.join("Graphs", f"{string_neurons}{activation}_{optimizer}_{loss.name}")
+                print(folder)
                 model, avg_final_val_loss, loss_history = aux.train_autoencoder(
                     all_profiles=all_profiles,
                     encoder_neurons_in=encoder_neurons,

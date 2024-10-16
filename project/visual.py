@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import ast
 
 #import and show data
-performance=pd.read_csv('results.csv')
+performance=pd.read_csv('results_leaky_relu.csv')
 print(performance.head())
 print(performance.columns)
 
