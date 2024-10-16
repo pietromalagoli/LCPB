@@ -32,7 +32,7 @@ from sklearn.preprocessing import MinMaxScaler
 # define the current working directory
 cwd = os.getcwd()  
 
-dir_names=['MESA-Web_M07_Z00001'] 
+dir_names=['all'] 
 column_filter = ['mass','radius', 'initial_mass', 'initial_z', 'star_age', 'logRho','logT','Teff','energy','photosphere_L', 'photosphere_r', 'star_mass','h1','he3','he4']
 column_filter_train = ['mass', 'logRho','logT','energy'] 
 n_points=50   # n of points to sample from each profile
@@ -182,7 +182,7 @@ hyperparameters = {
 }
 
 # Loop over latent dimensions (2 to 6)
-for latent_dim in range(4, 5):
+for latent_dim in range(3, 4):################# BEST LATENT DIMENSION = 3
     print(f"\nTraining with latent dim = {latent_dim}")
     hyperparameters['latent_dim'] = latent_dim
     autoencoder = Network(hyperparameters)
@@ -210,7 +210,7 @@ for latent_dim in range(4, 5):
     print("Test shpe:", x_test_tf.shape)
 
     print("#################################################")
-    print("Total loss:",autoencoder.compute_loss(x_test_tf, x_test_tf, x_reconstructed))
+    print("Total loss:",autoencoder.compute_loss(x_test_tf, x_test_tf, x_reconstructed).numpy())
 
 
     # Plot the original and reconstructed data
@@ -250,9 +250,10 @@ for latent_dim in range(4, 5):
 
     # Save loss graphs
     file_save_dir = os.path.join(os.getcwd(), "Graphs", f"TrainValLoss_dim_{latent_dim}.png")
-    plt.plot(history.history["loss"], label="Training Loss")
-    plt.plot(history.history["val_loss"], label="Validation Loss")
+    plt.plot(history.history["loss"], label="Training Loss", color='orange')
+    plt.plot(history.history["val_loss"], label="Validation Loss", color='blue')
     plt.title(f'Training Loss VS Validation Loss - Latent Dim = {latent_dim}')
+    plt.grid()
     plt.legend()
     plt.savefig(file_save_dir)
     plt.close()
