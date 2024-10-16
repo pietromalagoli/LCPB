@@ -22,11 +22,13 @@ class Autoencoder(Model):
         if not len(decoder_neurons) == len(decoder_activations):
             raise ValueError('The vector of neuron numbers for the decoder should be the same size of the activations')
 
-        encoder_layers = []
-        decoder_layers = []
+        #encoder_layers = []
+        #decoder_layers = []
 
         ##define the encoder
         input_shape = keras.Input(shape=(decoder_neurons[-1],))
+        print(input_shape)
+        print(type(input_shape))
         encoded = layers.Dense(encoder_neurons[0], activation=encoder_activations[0])(input_shape)
         for i in range(1, len(encoder_neurons)):
             encoded = layers.Dense(encoder_neurons[i], activation=encoder_activations[i])(encoded)

@@ -83,6 +83,7 @@ def train_autoencoder(all_profiles,encoder_neurons_in,activation,optimizer,loss,
     print(x_test.shape)
 
     avg_final_val_loss=[]
+    loss_history=[]
 
     for i in range(1, 6):
         ###Autoencoder parameters
@@ -118,8 +119,9 @@ def train_autoencoder(all_profiles,encoder_neurons_in,activation,optimizer,loss,
         len_history=len(history.history['val_loss'])
         points_mean=min(len_history,15)
         avg_final_val_loss.append(history.history['val_loss'][len_history-points_mean:len_history-1])
+        loss_history.append(history.history['val_loss'])
         
-    return autoencoder, avg_final_val_loss
+    return autoencoder, avg_final_val_loss, loss_history
 
 def plot_loss(history,i,folder):
     # Save loss graphs

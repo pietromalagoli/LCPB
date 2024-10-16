@@ -17,7 +17,7 @@ from tqdm import tqdm
 
 ##########IMPORT PARAMETERS##########
 cwd = os.getcwd()
-dir_names = ['all']  # type 'all' if you want to use all the data
+dir_names = ['MESA-Web_M07_Z00001']  # type 'all' if you want to use all the data
 column_filter = ['mass', 'radius', 'initial_mass', 'initial_z', 'star_age', 'logRho', 'logT',
                  'Teff', 'energy', 'photosphere_L', 'photosphere_r', 'star_mass', 'h1', 'he3', 'he4']
 column_filter_train = ['logRho']  # radius is not included for coding reasons but is still considered
@@ -36,23 +36,27 @@ encoder_neurons_list=[[20],
                       [100],
                       [50,20],
                       [200,100]]#,
-                      #[500,250,100],
+                      #[500,250,100]],
                       #[500,250,100,50],
                       #[500,400,300,200,100,50]]    #without hidden dimension
-activations=['leaky_relu']    #same for each layer
-optimizers=['nadam']#'adam','rmsprop','sgd','adagrad','nadam']
+activations=['leaky_relu','relu']    #same for each layer
+optimizers=['nadam','adam','rmsprop','sgd','adagrad']
 losses=[losses.MeanSquaredError()]
 
 ##CODE
 all_profiles=aux.get_data(dir_names=dir_names,column_filter=column_filter,\
                           column_filter_train=column_filter_train,r=r)
 
+"""
 best_encoder_neurons=[]
 best_activation=''
 best_optimizer=''
 best_loss=""
 best_latent_dim=0
 best_avg_loss=1000
+"""
+
+performance_data=pd.DataFrame()
 
 for encoder_neurons in encoder_neurons_list:
     for activation in activations:
@@ -62,7 +66,7 @@ for encoder_neurons in encoder_neurons_list:
                 for i in encoder_neurons:
                     string_neurons += f"{i}_"
                 folder = os.path.join("Graphs", f"{string_neurons}{activation}_{optimizer}_{loss.name}")
-                model, avg_final_val_loss = aux.train_autoencoder(
+                model, avg_final_val_loss, loss_history = aux.train_autoencoder(
                     all_profiles=all_profiles,
                     encoder_neurons_in=encoder_neurons,
                     activation=activation,
@@ -75,6 +79,19 @@ for encoder_neurons in encoder_neurons_list:
                     loss=loss
                 )
                 #print(avg_final_val_loss)
+                #print(loss_history)
+
+                for hn in range(1,6):
+                    new_row=pd.DataFrame([{'encoder_neurons':encoder_neurons,
+                                           'activation':activation,
+                                           'optimizer':optimizer,
+                                           'loss':loss,
+                                           'hidden_neurons':hn,
+                                           'avg_final_val_loss':avg_final_val_loss[hn-1],
+                                           'loss_history':loss_history[hn-1]}])
+                    performance_data=pd.concat([performance_data,new_row])
+
+                """
                 avg_losses=np.mean(avg_final_val_loss,axis=1)
                 #print(avg_losses)
                 i=np.argmin(avg_losses)
@@ -85,14 +102,17 @@ for encoder_neurons in encoder_neurons_list:
                     best_loss=loss.name
                     best_latent_dim=i+1
                     best_avg_loss=avg_losses[i]
+                """
 
+performance_data.to_csv('results.csv')
+"""
 print(f"Best Encoder Neurons: {best_encoder_neurons}\
       \nBest latent dimension: {best_latent_dim}\
       \nBest activation: {best_activation}\
       \nBest Optimizer: {best_optimizer}\
       \nBest Loss: {best_loss}\
       \nBest Avg Final Loss: {best_avg_loss}")
-
+"""
 """
 FOR LOG RHO ONLY
 
