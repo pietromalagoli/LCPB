@@ -126,16 +126,16 @@ print("x_test_tf shape:", x_test_tf.shape) #(288, 50, 4)
 act = tf.keras.layers.LeakyReLU(0.4)
 
 encoder = tf.keras.Sequential([
-    tf.keras.layers.Conv1D(filters=256, kernel_size=3, strides=2, padding='same', activation=act),
+    tf.keras.layers.Conv1D(filters=256, kernel_size=3, strides=2, padding='same', activation=act), 
     tf.keras.layers.Conv1D(filters=128, kernel_size=3, strides=2, padding='same', activation=act),
-    tf.keras.layers.Conv1D(filters=71, kernel_size=3, strides=2, padding='same', activation=act),
+    tf.keras.layers.Conv1D(filters=71, kernel_size=3, strides=2, padding='valid', activation=act),
     tf.keras.layers.Conv1D(filters=4, kernel_size=3, strides=2, padding='same', activation=act)
     ])
 
 decoder = tf.keras.Sequential([
     tf.keras.layers.Conv1DTranspose(filters=71, kernel_size=3, strides=2, padding='same', activation=act),
     tf.keras.layers.Conv1DTranspose(filters=128, kernel_size=3, strides=2, padding='same', activation=act),
-    tf.keras.layers.Conv1DTranspose(filters=256, kernel_size=3, strides=2, padding='same', activation=act),
+    tf.keras.layers.Conv1DTranspose(filters=256, kernel_size=3, strides=2, padding='valid', activation=act),
     tf.keras.layers.Conv1DTranspose(filters=4, kernel_size=3, strides=2, padding='same', activation=act)
 ])
 
