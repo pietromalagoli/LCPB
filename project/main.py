@@ -101,7 +101,7 @@ for encoder_neurons in encoder_neurons_list:
                 #print(avg_final_val_loss)
                 #print(loss_history)
 
-                for hn in range(1,6):
+                for hn in range(1,8):
                     new_row=pd.DataFrame([{'encoder_neurons':encoder_neurons,
                                            'activation':activation,
                                            'optimizer':optimizer,
