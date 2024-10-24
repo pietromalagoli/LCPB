@@ -38,3 +38,7 @@ ax.set_yscale('log')
 plt.show()
 
 print(performance.sort_values(by='avg_loss').head(10))
+
+best=performance[performance['hidden_neurons']==7]['avg_loss'].idxmin()
+print(best)
+print(performance.iloc[best])

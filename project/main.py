@@ -32,13 +32,12 @@ if dir_names[0] == 'all':
     
 ##HYPERPARAMETERS
 encoder_neurons_list=[[20],
-                      [50],
-                      [100],
-                      [50,20],
-                      [200,100],
-                      [500,250,100]]#,
+                    [50],
+                    [100],
+                    [150],
+                    [200]]#,
                       #[500,250,100,50],
-                      #[500,400,300,200,100,50]]    #without hidden dimension
+                      #[500,400,300,200,100,50]]    #not counting hidden dimension
 activations=['leaky_relu']
                     #leaky relu good
                     #relu terrible, doesn't learn
@@ -48,7 +47,7 @@ activations=['leaky_relu']
                     #selu learns at first but then stops
                     #silu learns slowly then stops
 
-optimizers=['nadam','adam','adamw','rmsprop']
+optimizers=['nadam','adamw']
                     #nadam is good
                     #adam is good as well
                     #rmsprop works well
@@ -66,14 +65,6 @@ losses=[losses.MeanSquaredError()]
 all_profiles=aux.get_data(dir_names=dir_names,column_filter=column_filter,\
                           column_filter_train=column_filter_train,r=r)
 
-"""
-best_encoder_neurons=[]
-best_activation=''
-best_optimizer=''
-best_loss=""
-best_latent_dim=0
-best_avg_loss=1000
-"""
 
 performance_data=pd.DataFrame()
 
@@ -98,69 +89,72 @@ for encoder_neurons in encoder_neurons_list:
                     column_filter_train=column_filter_train,
                     loss=loss
                 )
-                #print(avg_final_val_loss)
-                #print(loss_history)
 
-                for hn in range(1,8):
+                list_hidden_neurons=[4,5,7,8,9,10]
+
+                for hn in list_hidden_neurons:
                     new_row=pd.DataFrame([{'encoder_neurons':encoder_neurons,
                                            'activation':activation,
                                            'optimizer':optimizer,
                                            'loss':loss,
                                            'hidden_neurons':hn,
-                                           'avg_final_val_loss':avg_final_val_loss[hn-1],
-                                           'loss_history':loss_history[hn-1]}])
+                                           'avg_final_val_loss':avg_final_val_loss[list_hidden_neurons.index(hn)],
+                                           'loss_history':loss_history[list_hidden_neurons.index(hn)]}])
                     performance_data=pd.concat([performance_data,new_row])
 
-                """
-                avg_losses=np.mean(avg_final_val_loss,axis=1)
-                #print(avg_losses)
-                i=np.argmin(avg_losses)
-                if avg_losses[i]<best_avg_loss:
-                    best_encoder_neurons=encoder_neurons
-                    best_activation=activation
-                    best_optimizer=optimizer
-                    best_loss=loss.name
-                    best_latent_dim=i+1
-                    best_avg_loss=avg_losses[i]
-                """
-
 performance_data.to_csv('results.csv')
-"""
-print(f"Best Encoder Neurons: {best_encoder_neurons}\
-      \nBest latent dimension: {best_latent_dim}\
-      \nBest activation: {best_activation}\
-      \nBest Optimizer: {best_optimizer}\
-      \nBest Loss: {best_loss}\
-      \nBest Avg Final Loss: {best_avg_loss}")
-"""
-"""
-FOR LOG RHO ONLY
 
 
-Best Encoder Neurons: [100]      
-Best latent dimension: 4      
-Best activation: leaky_relu      
-Best Optimizer: nadam      
-Best Loss: mean_squared_error      
-Best Avg Final Loss: 0.005221975634672812
 
-SIMILAR
 
-Best Encoder Neurons: [100]      
-Best latent dimension: 4      
-Best activation: leaky_relu      
-Best Optimizer: adam      
-Best Loss: mean_squared_error      
-Best Avg Final Loss: 0.007384953488196645  
-"""
 
 """
-ANOTHER TRY
+RUN with
 
-Best Encoder Neurons: [100]      
-Best latent dimension: 3      
-Best activation: leaky_relu      
-Best Optimizer: nadam      
-Best Loss: mean_squared_error      
-Best Avg Final Loss: 0.010078218765556812
+-encoder_neurons=[[20],
+                [50],
+                [100],
+                [50,20],
+                [200,100],
+                [500,250,100]]
+
+-activation leaky_relu
+-optimizers adam,nadam,adamw,rmsprop
+-hidden layers in range (1,8)
+
+
+encoder_neurons                                                    [50]
+activation                                                   leaky_relu
+optimizer                                                         adamw
+loss                  <keras.src.losses.losses.MeanSquaredError obje...
+hidden_neurons                                                        4
+avg_final_val_loss    [0.005849427543580532, 0.006131332367658615, 0...
+loss_history          [52.9017219543457, 47.482967376708984, 5.20857...
+avg_loss                                                       0.006187
+num_layers                                                            5
+
+RESULTS STORED IN results1.csv
+"""
+
+"""
+FROM RUN 1 IT IS EVIDENT THAT:
+
+-ONLY NADAM AND ADAMW ARE COMPETITIVE
+-THE BEST IS A NETWORK WITH 5 LAYERS (2 INPUT/OUTPUT, 2 INTERNAL AND 1 HIDDEN)
+-BEST NUMBER OF HIDDEN LAYERS IS BETWEEN 4,5 AND 7, TRY OVER 7
+
+RUN with
+
+-encoder_neurons=[[20],
+                [50],
+                [100],
+                [150],
+                [200]]
+
+-activation leaky_relu
+-optimizers nadam,adamw
+-hidden layers in [4,5,7,8,9,10]
+
+
+RESULTS STORED IN results2.csv
 """
