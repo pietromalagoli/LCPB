@@ -4,9 +4,9 @@ import matplotlib.pyplot as plt
 import ast
 
 #import and show data
-performance=pd.read_csv('results.csv')
-print(performance.head())
-print(performance.columns)
+performance=pd.read_csv('results2.csv')
+#print(performance.head())
+#print(performance.columns)
 
 #transform string into series because reading from file gives problems
 performance['avg_final_val_loss'] = performance['avg_final_val_loss'].apply(lambda x: ast.literal_eval(x))
@@ -17,28 +17,30 @@ performance['avg_loss']=performance['avg_final_val_loss'].apply(lambda x: pd.Ser
 performance['num_layers']=performance['encoder_neurons'].apply(lambda x: (len(x)*2)+3)
 
 #determine best model
-best=performance['avg_loss'].idxmin()
+best=performance[performance['hidden_neurons']<8]['avg_loss'].idxmin()
 print(best)
 print(performance.iloc[best])
 
 #plot
 fig, ax = plt.subplots(figsize = (9, 6))
 ax.scatter(x=performance['hidden_neurons'],y=performance['avg_loss'])
+ax.set_xlabel("hidden neurons")
+ax.set_ylabel("average loss")
 ax.set_yscale('log')
 plt.show()
 
 fig, ax = plt.subplots(figsize = (9, 6))
 ax.scatter(x=performance['num_layers'],y=performance['avg_loss'])
 ax.set_yscale('log')
+ax.set_xlabel("number of layers")
+ax.set_ylabel("average loss")
 plt.show()
 
 fig, ax = plt.subplots(figsize = (9, 6))
 ax.scatter(x=performance['optimizer'],y=performance['avg_loss'])
 ax.set_yscale('log')
+ax.set_xlabel("optimizer")
+ax.set_ylabel("average loss")
 plt.show()
 
-print(performance.sort_values(by='avg_loss').head(10))
-
-best=performance[performance['hidden_neurons']==7]['avg_loss'].idxmin()
-print(best)
-print(performance.iloc[best])
+print(performance.sort_values(by='avg_loss')[performance['hidden_neurons']<8][['hidden_neurons','optimizer','avg_loss']].head(10)) #

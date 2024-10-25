@@ -14,13 +14,16 @@ from keras import layers, losses
 from keras.models import Model
 from scipy.interpolate import UnivariateSpline
 from tqdm import tqdm
+#from sklearn.preprocessing import MinMaxScaler 
 
 def get_data(dir_names,column_filter,column_filter_train,r):
     cwd = os.getcwd()
     # Initialize an empty list to hold all the profiles
     all_profiles = []
 
-    for i, dir_name in enumerate(tqdm(dir_names, desc="Importing data from directories")):
+    #scalers = {column: MinMaxScaler() for column in column_filter_train}
+
+    for dir_name in tqdm(dir_names, desc="Importing data from directories"):
         dir_path = os.path.join(cwd, 'StellarTracks', dir_name)
 
         def extract_number(filename):
@@ -30,21 +33,37 @@ def get_data(dir_names,column_filter,column_filter_train,r):
         filenames = [filename for filename in os.listdir(dir_path) if re.fullmatch('profile[0-9]+\.data', filename)]
         filenames = sorted(filenames, key=extract_number)  # sort the elements according to the number in the name
 
-        for j, filename in enumerate(tqdm(filenames, desc=f"Importing from {dir_name}", leave=False)):
+        for filename in tqdm(filenames, desc=f"Importing from {dir_name}", leave=False):
             filename = os.path.join(dir_path, filename)
             data = mw.read_profile(filename)
             profile_df = pd.DataFrame(data)
             filtered_profile_df = profile_df[column_filter].copy()
-            train_filtered_profile_df = profile_df[column_filter_train].copy()
+            #print(filtered_profile_df[['logRho','energy','logT','mass']].head(10))
+            """
+            print('\n\n')
+            print('Mean Energy:',filtered_profile_df['energy'].mean(),'\t\tMin Energy:',filtered_profile_df['energy'].min(),'\t\tMax Energy:',filtered_profile_df['energy'].max())
+            print('Mean mass:',filtered_profile_df['mass'].mean(),'\t\tMin mass:',filtered_profile_df['mass'].min(),'\t\tMax mass:',filtered_profile_df['mass'].max())
+            print('Mean logT:',filtered_profile_df['logT'].mean(),'\t\tMin logT:',filtered_profile_df['logT'].min(),'\t\tMax logT:',filtered_profile_df['logT'].max())
+            print('Mean logRho:',filtered_profile_df['logRho'].mean(),'\t\tMin logRho:',filtered_profile_df['logRho'].min(),'\t\tMax logRho:',filtered_profile_df['logRho'].max())
+            """
+            #train_filtered_profile_df = profile_df[column_filter_train].copy()
 
             norm_radius = (filtered_profile_df['radius'] - filtered_profile_df['radius'].min()) / \
                         (filtered_profile_df['radius'].max() - filtered_profile_df['radius'].min())
             norm_profiles = []
 
-            for k, column in enumerate(column_filter_train):
-                #norm = (filtered_profile_df[column] - filtered_profile_df[column].min()) / \
-                #       (filtered_profile_df[column].max() - filtered_profile_df[column].min())
+            for column in column_filter_train:
+                """
+                column_values = filtered_profile_df[column].values.reshape(-1, 1)  # Reshape for sklearn
+                scalers[column].fit(column_values)  # Fit scaler
+                norm = scalers[column].transform(column_values).flatten()
+                """
+
                 norm = filtered_profile_df[column]
+
+                if column=='energy':
+                    norm = pd.Series([np.log(x) for x in filtered_profile_df[column]])
+
                 norm = np.asarray(norm.T)
                 int_norm = UnivariateSpline(norm_radius, norm, k=2, s=0)(r)
                 norm_profiles.append(int_norm)
@@ -85,7 +104,7 @@ def train_autoencoder(all_profiles,encoder_neurons_in,activation,optimizer,loss,
     avg_final_val_loss=[]
     loss_history=[]
 
-    for i in [4,5,7,8,9,10]:
+    for i in range(1,8):
         ###Autoencoder parameters
         encoder_neurons = encoder_neurons_in.copy()  # last value should be the latent dimension
         encoder_neurons.append(i)

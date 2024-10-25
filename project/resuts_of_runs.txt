@@ -1,0 +1,109 @@
+######## WHEN ONLY USING LOGRHO ########
+
+ACTIVATIONS
+
+#leaky relu good
+#relu terrible, doesn't learn
+#gelu is same as relu
+#softplus very slow learning
+#elu bad
+#selu learns at first but then stops
+#silu learns slowly then stops
+
+OPTIMIZERS
+
+#nadam is good
+#adam is good as well
+#rmsprop works well
+#sgd works but sensibly worse than the others
+#adagrad doesn't work
+#adadelta slow learning
+#ftrl doesn't work
+#adamax works but doesn't reach low error like the others
+#adamw is pretty good
+#lion like adamax
+
+########### RUN 1 ###########
+"""
+RUN with
+
+-encoder_neurons=[[20],
+                [50],
+                [100],
+                [50,20],
+                [200,100],
+                [500,250,100]]
+
+-activation leaky_relu
+-optimizers adam,nadam,adamw,rmsprop
+-hidden layers in range (1,8)
+
+
+encoder_neurons                                                    [50]
+activation                                                   leaky_relu
+optimizer                                                         adamw
+loss                  <keras.src.losses.losses.MeanSquaredError obje...
+hidden_neurons                                                        4
+avg_final_val_loss    [0.005849427543580532, 0.006131332367658615, 0...
+loss_history          [52.9017219543457, 47.482967376708984, 5.20857...
+avg_loss                                                       0.006187
+num_layers                                                            5
+
+RESULTS STORED IN results1.csv
+"""
+########### RUN 2 ###########
+"""
+FROM RUN 1 IT IS EVIDENT THAT:
+
+-ONLY NADAM AND ADAMW ARE COMPETITIVE
+-THE BEST IS A NETWORK WITH 5 LAYERS (2 INPUT/OUTPUT, 2 INTERNAL AND 1 HIDDEN)
+-BEST NUMBER OF HIDDEN LAYERS IS BETWEEN 4,5 AND 7, TRY OVER 7
+
+RUN with
+
+-encoder_neurons=[[20],
+                [50],
+                [100],
+                [150],
+                [200]]
+
+-activation leaky_relu
+-optimizers nadam,adamw
+-hidden layers in [4,5,7,8,9,10]
+
+
+RESULTS STORED IN results2.csv
+"""
+########### RUN 3 ###########
+"""
+FROM RUN 2 WE SEE THAT:
+
+-ADAMW IS BETTER WITH HIGHER NUMBER OF HIDDEN NEURONS, WHICH OCCUPY THE BEST 5 SPOTS
+-NADAM IS BEST FOR LOWER NUMBER OF NEURONS, HN=5 IS AT POSITION 6 WITH HALF OF THE HN THAN THE FIRST 5 POSITIONS
+
+BEST MODEL WITH ARBITRARY NUMBER OF HN
+
+nnamed: 0                                                            0
+encoder_neurons                                                   [200]
+activation                                                   leaky_relu
+optimizer                                                         adamw
+loss                  <keras.src.losses.losses.MeanSquaredError obje...
+hidden_neurons                                                        9
+avg_final_val_loss    [0.004064497072249651, 0.003987048286944628, 0...
+loss_history          [5.724115371704102, 1.160295009613037, 1.10020...
+avg_loss                                                       0.005363
+num_layers                                                            5
+
+BEST MODEL WITH RESTRICTED NUMBER OF NEURONS
+
+Unnamed: 0                                                            0
+encoder_neurons                                                   [150]
+activation                                                   leaky_relu
+optimizer                                                         nadam
+loss                  <keras.src.losses.losses.MeanSquaredError obje...
+hidden_neurons                                                        5
+avg_final_val_loss    [0.006060653831809759, 0.006187492050230503, 0...
+loss_history          [34.499977111816406, 1.167460560798645, 1.0452...
+avg_loss                                                       0.006492
+num_layers                                                            5
+"""
