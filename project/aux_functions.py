@@ -104,7 +104,7 @@ def train_autoencoder(all_profiles,encoder_neurons_in,activation,optimizer,loss,
     avg_final_val_loss=[]
     loss_history=[]
 
-    for i in range(1,8):
+    for i in range(5,10):
         ###Autoencoder parameters
         encoder_neurons = encoder_neurons_in.copy()  # last value should be the latent dimension
         encoder_neurons.append(i)

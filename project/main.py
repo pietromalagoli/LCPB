@@ -1,6 +1,8 @@
 import mesa_web as mw
 import pandas as pd
-import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('Agg')
+from matplotlib import pyplot as plt
 import numpy as np
 import tensorflow as tf
 import os
@@ -34,9 +36,8 @@ if dir_names[0] == 'all':
 encoder_neurons_list=[[20],
                 [50],
                 [100],
-                [50,20],
-                [200,100],
-                [500,250,100]]    #not counting hidden dimension
+                [200],
+                [500]]   #not counting hidden dimension
 activations=['leaky_relu']
                     #leaky relu good
                     #relu terrible, doesn't learn
@@ -46,7 +47,7 @@ activations=['leaky_relu']
                     #selu learns at first but then stops
                     #silu learns slowly then stops
 
-optimizers=['nadam','adamw']
+optimizers=['lion']# nadam,adamw
                     #nadam is good
                     #adam is good as well
                     #rmsprop works well
@@ -89,7 +90,7 @@ for encoder_neurons in encoder_neurons_list:
                     loss=loss
                 )
 
-                list_hidden_neurons=range(1,8)
+                list_hidden_neurons=range(5,10)
 
                 for hn in list_hidden_neurons:
                     new_row=pd.DataFrame([{'encoder_neurons':encoder_neurons,

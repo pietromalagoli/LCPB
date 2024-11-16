@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import ast
 
 #import and show data
-performance=pd.read_csv('results2.csv')
+performance=pd.read_csv('results6.csv')
 #print(performance.head())
 #print(performance.columns)
 
@@ -17,7 +17,7 @@ performance['avg_loss']=performance['avg_final_val_loss'].apply(lambda x: pd.Ser
 performance['num_layers']=performance['encoder_neurons'].apply(lambda x: (len(x)*2)+3)
 
 #determine best model
-best=performance[performance['hidden_neurons']<8]['avg_loss'].idxmin()
+best=performance['avg_loss'].idxmin()
 print(best)
 print(performance.iloc[best])
 
@@ -43,4 +43,4 @@ ax.set_xlabel("optimizer")
 ax.set_ylabel("average loss")
 plt.show()
 
-print(performance.sort_values(by='avg_loss')[performance['hidden_neurons']<8][['hidden_neurons','optimizer','avg_loss']].head(10)) #
+print(performance.sort_values(by='avg_loss')[['hidden_neurons','optimizer','avg_loss','encoder_neurons']].head(10)) #
