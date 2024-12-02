@@ -8,7 +8,7 @@ import os
 import re
 
 from sklearn.metrics import accuracy_score, precision_score, recall_score
-from sklearn.model_selection import train_test_split, GridSearchCV, ParameterGrid
+from sklearn.model_selection import train_test_split, GridSearchCV
 from keras import  losses, layers, activations
 from keras.datasets import fashion_mnist
 from keras.models import Model
@@ -19,7 +19,6 @@ from keras import backend as K
 from tqdm import tqdm 
 from itertools import product
 from sklearn.preprocessing import MinMaxScaler 
-from scikeras.wrappers import KerasClassifier   # Wrapper to use Keras models with scikit-learn (necessary for using GridSearchCV here) 
 
 ### 
 # Fare un grid search per le dim degli strati e il padding (error catch per il padding)
@@ -33,7 +32,7 @@ from scikeras.wrappers import KerasClassifier   # Wrapper to use Keras models wi
 # define the current working directory
 cwd = os.getcwd()  
 
-dir_names=['MESA-Web_M07_Z00001'] 
+dir_names=['all'] 
 column_filter = ['mass','radius', 'initial_mass', 'initial_z', 'star_age', 'logRho','logT','Teff','energy','photosphere_L', 'photosphere_r', 'star_mass','h1','he3','he4']
 column_filter_train = ['mass', 'logRho','logT','energy'] 
 n_points=50   # n of points to sample from each profile
@@ -80,19 +79,15 @@ for i,dir_name in enumerate(tqdm(dir_names, desc="Importing data from directorie
 
     ### Apply normalization for each training column
     for column in column_filter_train:
-            '''
             column_values = filtered_profile_df[column].values.reshape(-1, 1)  # Reshape for sklearn
             scalers[column].fit(column_values)  # Fit scaler
             norm = scalers[column].transform(column_values).flatten()  # Normalize data
-            '''
-            # Here we take the logarithm of the energy to rescale it wrt the other variables
-            norm = filtered_profile_df[column]
-            
-            if column == 'energy':
-                norm = pd.Series([np.log(x) for x in filtered_profile_df[column]])
-                # Rename the column accordingly
-                column = 'logEnergy'
-                
+
+            # Print the first 50 normalized mass values if the column is 'mass'
+            #if column == 'mass':
+                #print("Primi 50 valori normalizzati della massa:")
+                #print(norm[:50])  # Print the first 50 normalized mass values
+        
 
             norm = np.asarray(norm.T)  # Convert to numpy array
             int_norm = UnivariateSpline(norm_radius, norm, k=2, s=0)(r)  # Interpolate over the normalized radius
@@ -136,7 +131,6 @@ class Network(tf.keras.Model):
         self.output_size = hyperparameters['output_size']
         self.activation = hyperparameters['activation']
         self.latent_dim = hyperparameters['latent_dim']
-        self.kernel_sizes = hyperparameters['kernel_sizes']
 
         if self.activation == 'relu':
             act = tf.keras.layers.ReLU()
@@ -147,17 +141,17 @@ class Network(tf.keras.Model):
 
         # Define the layers of the network (encoder and decoder)
         self.encoder = tf.keras.Sequential([
-            tf.keras.layers.Conv1D(filters=256, kernel_size=self.kernel_sizes[0], strides=2, padding='same', activation=act),
-            tf.keras.layers.Conv1D(filters=128, kernel_size=self.kernel_sizes[1], strides=2, padding='same', activation=act),
-            tf.keras.layers.Conv1D(filters=71, kernel_size=self.kernel_sizes[2], strides=2, padding='valid', activation=act),
-            tf.keras.layers.Conv1D(filters=self.latent_dim, kernel_size=self.kernel_sizes[3], strides=2, padding='same', activation=act),
+            tf.keras.layers.Conv1D(filters=256, kernel_size=3, strides=2, padding='same', activation=act),
+            tf.keras.layers.Conv1D(filters=128, kernel_size=3, strides=2, padding='same', activation=act),
+            tf.keras.layers.Conv1D(filters=71, kernel_size=3, strides=2, padding='valid', activation=act),
+            tf.keras.layers.Conv1D(filters=self.latent_dim, kernel_size=5, strides=2, padding='same', activation=act),
         ]) 
 
         self.decoder = tf.keras.Sequential([
-            tf.keras.layers.Conv1DTranspose(filters=71, kernel_size=self.kernel_sizes[4], strides=2, padding='same', activation=act),
-            tf.keras.layers.Conv1DTranspose(filters=128, kernel_size=self.kernel_sizes[5], strides=2, padding='same', activation=act),
-            tf.keras.layers.Conv1DTranspose(filters=256, kernel_size=self.kernel_sizes[6], strides=2, padding='valid', activation=act),
-            tf.keras.layers.Conv1DTranspose(filters=4, kernel_size=self.kernel_sizes[7], strides=2, padding='same', activation=act)
+            tf.keras.layers.Conv1DTranspose(filters=71, kernel_size=3, strides=2, padding='same', activation=act),
+            tf.keras.layers.Conv1DTranspose(filters=128, kernel_size=3, strides=2, padding='same', activation=act),
+            tf.keras.layers.Conv1DTranspose(filters=256, kernel_size=3, strides=2, padding='valid', activation=act),
+            tf.keras.layers.Conv1DTranspose(filters=4, kernel_size=3, strides=2, padding='same', activation=act)
         ])
     
     def call(self, x):
@@ -178,7 +172,7 @@ class Network(tf.keras.Model):
         decoded = self.decoder(encoded)
 
         return decoded
-'''
+
 # Hyperparameters setup
 hyperparameters = {
     'input_size': x_train_tf.shape[1:],  # Input shape
@@ -186,11 +180,10 @@ hyperparameters = {
     'activation': 'leakyrelu',  # Activation function
     'latent_dim': 4  # Latent dimension
 }
-'''
-# Loop over latent dimensions 
-for latent_dim in range(4, 5):################# BEST LATENT DIMENSION = 4
+
+# Loop over latent dimensions (2 to 6)
+for latent_dim in range(3, 4):################# BEST LATENT DIMENSION = 3
     print(f"\nTraining with latent dim = {latent_dim}")
-    '''
     hyperparameters['latent_dim'] = latent_dim
     autoencoder = Network(hyperparameters)
 
@@ -218,78 +211,23 @@ for latent_dim in range(4, 5):################# BEST LATENT DIMENSION = 4
 
     print("#################################################")
     print("Total loss:",autoencoder.compute_loss(x_test_tf, x_test_tf, x_reconstructed).numpy())
-    '''
+
     ##########################################################################################
     ################################## GRID SEARCH ###########################################
     ##########################################################################################
-    
+
     # Define the parameter sets
     kernel_size = [2,3,4,5]
     stride = [1,2,3]
-    padding = 'causal'
-    param_dict={'kernel_size': kernel_size, \
-                'stride': stride,
-                'padding': padding}
-    param_grid = ParameterGrid(param_dict)
-    '''
-    # Use a wrapper to use the Keras model with scikit-learn
-    keras_clf = KerasClassifier(build_fn=autoencoder, epochs=100, batch_size=32, metrics= 'Accuracy', \
-                                loss=tf.keras.losses.MeanSquaredError(), callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=20)], \
-                                verbose=1)
-
-    # Implement the grid search
-    gridsearch = GridSearchCV(estimator=keras_clf, param_grid=param_grid ,cv=5)
-    gridsearch.fit(x_train_tf, x_train_tf)
-    print('############### GRID SEARCH RESULTS ################')
-    gridsearch.cv_results_
-    print('Best parameters:', gridsearch.best_params_)
-    '''
-    '''
+    
     # For the padding we retrieve its value from the formula: O=[(I−K+2P)/S]+1 (O: output size, I: input size, K: kernel size, P: padding, S: stride) 
     # (maybe you have to apply the floor function on it) (for the padding P I think is P=0 for padding 'valid' and P=1 for padding 'same')
     # So it's P = [S * (O + 1) - I + K] / 2
     
     def evaluate_padding(I,K,P,S):
         return ((I-K+2*P)/S)+1
-    '''
-    # Non riesco a implementare il grid search con gridsearchCV, provo a mano
-    for set in param_grid:
-        # Hyperparameters setup
-        hyperparameters = {
-            'input_size': x_train_tf.shape[1:],  # Input shape
-            'output_size': x_train_tf.shape[-1],  # Output shape
-            'activation': 'leakyrelu',  # Activation function
-            'latent_dim': 4  # Latent dimension
-            ## AGGIUNGI I PARAMETRI SU CUI LOOP
-        }
-        
-        hyperparameters['latent_dim'] = latent_dim
-        autoencoder = Network(hyperparameters)
-
-        # Compile the model
-        autoencoder.compile(optimizer='adam', loss=tf.keras.losses.MeanSquaredError())
-
-        # Train the model
-        history = autoencoder.fit(x_train_tf, x_train_tf,
-                                epochs=100,
-                                shuffle=True,
-                                validation_data=(x_test_tf, x_test_tf),
-                                callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=20)])
-        
-        #print(f"Latent Dim = {latent_dim}:")
-        #print("Loss history:", history.history['loss'])
-        #print("Validation Loss history:", history.history['val_loss'])
-
-        autoencoder.encoder.summary()
-        autoencoder.decoder.summary()
-
-        # Make predictions on the test data
-        x_reconstructed = autoencoder.predict(x_test_tf)
-        print('Shape of x_reconstructed:', x_reconstructed.shape)
-        print("Test shpe:", x_test_tf.shape)
-
-        print("#################################################")
-        print("Total loss:",autoencoder.compute_loss(x_test_tf, x_test_tf, x_reconstructed).numpy())
+    
+    # COME GLI FACCIO A DARE IL VALORE DI PADDING NEL GRID SEARCH SE DALLA FORMULA ESCE 0 O 1 E IO GLI DEVO DARE VALID O SAME??
 
     # Plot the original and reconstructed data
     fig, axes = plt.subplots(2, 4, figsize=(20, 10))  # 2 rows, 4 columns
@@ -309,14 +247,14 @@ for latent_dim in range(4, 5):################# BEST LATENT DIMENSION = 4
     # Plot the difference between original and reconstructed for each feature in the second row
     for i, feature in enumerate(column_filter_train):
         ax = axes[1, i]
-        difference = np.abs(x_test_tf[0, :, i] - x_reconstructed[0, :, i])
+        difference = x_test_tf[0, :, i] - x_reconstructed[0, :, i]
         mean_difference = np.mean(difference)
-        ax.scatter(r, difference, label=f'{feature} absolute difference', color='darkgreen', marker='o')
+        ax.scatter(r, difference, label=f'{feature} Difference', color='darkgreen', marker='o')
         ax.axhline(0, color='black', linewidth=0.7)  # Horizontal line at y=0
-        ax.axhline(mean_difference, color ='darkred', linestyle='--', linewidth = 1.5, label ='Mean absolute difference')
-        ax.set_title(f'{feature} absolute difference (Latent Dim: {latent_dim})')
+        ax.axhline(mean_difference, color ='darkred', linestyle='--', linewidth = 1.5, label ='Mean difference')
+        ax.set_title(f'{feature} Difference (Latent Dim: {latent_dim})')
         ax.set_xlabel('Normalized Radius')
-        ax.set_ylabel(f'{feature} absolute difference')
+        ax.set_ylabel(f'{feature} Difference')
         ax.grid(True) 
     
     # Adjust layout
@@ -331,8 +269,6 @@ for latent_dim in range(4, 5):################# BEST LATENT DIMENSION = 4
     plt.plot(history.history["loss"], label="Training Loss", color='orange')
     plt.plot(history.history["val_loss"], label="Validation Loss", color='blue')
     plt.title(f'Training Loss VS Validation Loss - Latent Dim = {latent_dim}')
-    plt.xlabel('Epoch')
-    plt.ylabel('Loss')
     plt.grid()
     plt.legend()
     plt.savefig(file_save_dir)
