@@ -1,5 +1,4 @@
 import mesa_web as mw
-import aux
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -20,7 +19,6 @@ from keras import backend as K
 from tqdm import tqdm 
 from itertools import product
 from sklearn.preprocessing import MinMaxScaler 
-from scikeras.wrappers import KerasClassifier   # Wrapper to use Keras models with scikit-learn (necessary for using GridSearchCV here) 
 
 ### 
 # Fare un grid search per le dim degli strati e il padding (error catch per il padding)
@@ -31,9 +29,96 @@ from scikeras.wrappers import KerasClassifier   # Wrapper to use Keras models wi
 # il numero di epoche va bene? 
 
 
-#### PREPROCESSING
+# define the current working directory
+cwd = os.getcwd()  
 
-x_train_tf, x_test_tf, features, r = aux.preprocess(dir_names=['all'], features=['mass', 'logRho', 'logT', 'energy'], n_points=50)
+dir_names=['all'] 
+column_filter = ['mass','radius', 'initial_mass', 'initial_z', 'star_age', 'logRho','logT','Teff','energy','photosphere_L', 'photosphere_r', 'star_mass','h1','he3','he4']
+column_filter_train = ['mass', 'logRho','logT','energy'] 
+n_points=50   # n of points to sample from each profile
+r=np.linspace(0, 1, n_points) # n_points equidistant 
+
+if dir_names[0] == 'all':
+    dir_names = ['MESA-Web_M07_Z00001', 'MESA-Web_M07_Z002', 'MESA-Web_M10_Z002', 'MESA-Web_M10_Z0001',
+                 'MESA-Web_M10_Z00001', 'MESA-Web_M15_Z0001', 'MESA-Web_M15_Z00001', 'MESA-Web_M30_Z00001',
+                 'MESA-Web_M30_Z002', 'MESA-Web_M50_Z00001', 'MESA-Web_M50_Z002', 'MESA-Web_M50_Z001',
+                 'MESA-Web_M5_Z002', 'MESA-Web_M5_Z0001', 'MESA-Web_M1_Z00001', 'MESA-Web_M1_Z0001']
+
+### Normalization of each column
+scalers = {column: MinMaxScaler() for column in column_filter_train}
+
+# Initialize a list to hold all data
+all_profiles = []
+
+for i,dir_name in enumerate(tqdm(dir_names, desc="Importing data from directories")):
+
+  dir_name=os.path.join(cwd,'StellarTracks',dir_name)
+
+  def extract_number(filename): # function use to extract the number of the profile
+    match = re.search(r'\d+', filename)  #find the sequence of digits
+    return int(match.group()) if match else float('inf')
+
+  filenames=[filename for filename in os.listdir(dir_name) if re.fullmatch('profile[0-9]+\.data',filename)]
+  filenames=sorted(filenames, key=extract_number) #sort the elements according to the number in the name
+
+  for j,filename in enumerate(tqdm(filenames, desc=f"Importing from {dir_name}", leave=False)):
+
+    filename=os.path.join(dir_name,filename)
+    data=mw.read_profile(filename)
+
+    profile_df=pd.DataFrame(data) # DataFrame with all the columns
+    filtered_profile_df = profile_df[column_filter].copy()# Create a new DataFrame with only the selected columns
+    train_filtered_profile_df = profile_df[column_filter_train].copy() # Create a new DataFrame with only the selected columns for autoencoder training
+
+    ###Normalization process for each feature
+    tot_radius=filtered_profile_df['photosphere_r']
+    norm_radius=(filtered_profile_df['radius'] - filtered_profile_df['radius'].min())/(tot_radius-filtered_profile_df['radius'].min())
+    
+
+    norm_profiles = []
+
+    ### Apply normalization for each training column
+    for column in column_filter_train:
+            column_values = filtered_profile_df[column].values.reshape(-1, 1)  # Reshape for sklearn
+            scalers[column].fit(column_values)  # Fit scaler
+            norm = scalers[column].transform(column_values).flatten()  # Normalize data
+
+            # Print the first 50 normalized mass values if the column is 'mass'
+            #if column == 'mass':
+                #print("Primi 50 valori normalizzati della massa:")
+                #print(norm[:50])  # Print the first 50 normalized mass values
+        
+
+            norm = np.asarray(norm.T)  # Convert to numpy array
+            int_norm = UnivariateSpline(norm_radius, norm, k=2, s=0)(r)  # Interpolate over the normalized radius
+            norm_profiles.append(int_norm)
+
+    all_profiles.append(np.array(norm_profiles).T)  # Append normalized profiles
+# Convert the list of profiles to a numpy array
+all_profiles = np.array(all_profiles)
+print("Final length of all profiles",len(all_profiles))
+print("Final shape of all profiles:", all_profiles.shape)
+
+
+
+x_train, x_test = train_test_split(all_profiles, test_size=0.2, shuffle=False) 
+print ('train shape :', x_train.shape) # (train_samples, n_points, num_features)
+print ('test shape:', x_test.shape) # (train_samples, n_points, num_features)
+
+
+
+# Reshape the data to match the input shape expected by the model
+# The input shape is (batch_size, sequence_length, input_dim)
+# In our case, sequence_length = 50 and input_dim = n_features
+
+num_features = len(column_filter_train)
+
+x_train_tf = tf.reshape(x_train, ( x_train.shape[0], n_points, num_features))
+x_test_tf = tf.reshape(x_test, ( x_test.shape[0], n_points, num_features))
+
+# Print the shapes to verify
+print("x_train_tf shape:", x_train_tf.shape) #(1148, 50, 4)
+print("x_test_tf shape:", x_test_tf.shape) #(288, 50, 4)
 
 class Network(tf.keras.Model):
     def __init__(self, hyperparameters):
@@ -96,8 +181,8 @@ hyperparameters = {
     'latent_dim': 4  # Latent dimension
 }
 
-# Loop over latent dimensions 
-for latent_dim in range(3, 5):################# BEST LATENT DIMENSION = 3
+# Loop over latent dimensions (2 to 6)
+for latent_dim in range(3, 4):################# BEST LATENT DIMENSION = 3
     print(f"\nTraining with latent dim = {latent_dim}")
     hyperparameters['latent_dim'] = latent_dim
     autoencoder = Network(hyperparameters)
@@ -130,27 +215,11 @@ for latent_dim in range(3, 5):################# BEST LATENT DIMENSION = 3
     ##########################################################################################
     ################################## GRID SEARCH ###########################################
     ##########################################################################################
-    '''
+
     # Define the parameter sets
     kernel_size = [2,3,4,5]
     stride = [1,2,3]
-    padding = 'causal'
-    param_grid={'kernel_size': kernel_size, \
-                'stride': stride,
-                'padding': padding}
     
-    # Use a wrapper to use the Keras model with scikit-learn
-    keras_clf = KerasClassifier(build_fn=autoencoder, epochs=100, batch_size=32, metrics= 'Accuracy', \
-                                loss=tf.keras.losses.MeanSquaredError(), callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=20)], \
-                                verbose=1)
-
-    # Implement the grid search
-    gridsearch = GridSearchCV(estimator=keras_clf, param_grid=param_grid ,cv=5)
-    gridsearch.fit(x_train_tf, x_train_tf)
-    print('############### GRID SEARCH RESULTS ################')
-    gridsearch.cv_results_
-    print('Best parameters:', gridsearch.best_params_)
-    '''
     # For the padding we retrieve its value from the formula: O=[(I−K+2P)/S]+1 (O: output size, I: input size, K: kernel size, P: padding, S: stride) 
     # (maybe you have to apply the floor function on it) (for the padding P I think is P=0 for padding 'valid' and P=1 for padding 'same')
     # So it's P = [S * (O + 1) - I + K] / 2
@@ -164,7 +233,7 @@ for latent_dim in range(3, 5):################# BEST LATENT DIMENSION = 3
     fig, axes = plt.subplots(2, 4, figsize=(20, 10))  # 2 rows, 4 columns
 
     # Plot original vs reconstructed for each feature in the first row
-    for i, feature in enumerate(features):
+    for i, feature in enumerate(column_filter_train):
         ax = axes[0, i]
         ax.scatter(r, x_test_tf[0, :, i], label='Original', color='blue', marker='o')
         ax.scatter(r, x_reconstructed[0, :, i], label='Reconstructed', color='red', marker='x')
@@ -176,16 +245,16 @@ for latent_dim in range(3, 5):################# BEST LATENT DIMENSION = 3
             ax.legend(loc='best')
 
     # Plot the difference between original and reconstructed for each feature in the second row
-    for i, feature in enumerate(features):
+    for i, feature in enumerate(column_filter_train):
         ax = axes[1, i]
-        difference = np.abs(x_test_tf[0, :, i] - x_reconstructed[0, :, i])
+        difference = x_test_tf[0, :, i] - x_reconstructed[0, :, i]
         mean_difference = np.mean(difference)
-        ax.scatter(r, difference, label=f'{feature} absolute difference', color='darkgreen', marker='o')
+        ax.scatter(r, difference, label=f'{feature} Difference', color='darkgreen', marker='o')
         ax.axhline(0, color='black', linewidth=0.7)  # Horizontal line at y=0
-        ax.axhline(mean_difference, color ='darkred', linestyle='--', linewidth = 1.5, label ='Mean absolute difference')
-        ax.set_title(f'{feature} absolute difference (Latent Dim: {latent_dim})')
+        ax.axhline(mean_difference, color ='darkred', linestyle='--', linewidth = 1.5, label ='Mean difference')
+        ax.set_title(f'{feature} Difference (Latent Dim: {latent_dim})')
         ax.set_xlabel('Normalized Radius')
-        ax.set_ylabel(f'{feature} absolute difference')
+        ax.set_ylabel(f'{feature} Difference')
         ax.grid(True) 
     
     # Adjust layout
@@ -200,8 +269,6 @@ for latent_dim in range(3, 5):################# BEST LATENT DIMENSION = 3
     plt.plot(history.history["loss"], label="Training Loss", color='orange')
     plt.plot(history.history["val_loss"], label="Validation Loss", color='blue')
     plt.title(f'Training Loss VS Validation Loss - Latent Dim = {latent_dim}')
-    plt.xlabel('Epoch')
-    plt.ylabel('Loss')
     plt.grid()
     plt.legend()
     plt.savefig(file_save_dir)
