@@ -43,4 +43,4 @@ ax.set_xlabel("optimizer")
 ax.set_ylabel("average loss")
 plt.show()
 
-print(performance.sort_values(by='avg_loss')[['hidden_neurons','optimizer','avg_loss','encoder_neurons']].head(10)) #
+print(performance.sort_values(by='avg_loss')[['hidden_neurons','optimizer','avg_loss','encoder_neurons']].head(15)) #

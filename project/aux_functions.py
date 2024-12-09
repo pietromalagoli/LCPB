@@ -79,10 +79,10 @@ def get_data(dir_names,column_filter,column_filter_train,r):
     return all_profiles
 
 
-def train_autoencoder(all_profiles,encoder_neurons_in,activation,optimizer,loss,plot_loss,plot_reconstructed,save_model,folder,column_filter_train):
+def train_autoencoder(all_profiles,encoder_neurons_in,activation,optimizer,loss,plot_loss,plot_reconstructed,save_model,folder,column_filter_train,random_state=None):
 
     # Split the data
-    x_train, x_test = train_test_split(all_profiles, test_size=0.2)
+    x_train, x_test = train_test_split(all_profiles, test_size=0.2,random_state=random_state)
     print(x_train.shape)
     print(x_test.shape)
 

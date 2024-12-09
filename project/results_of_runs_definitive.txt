@@ -1,0 +1,161 @@
+######## WHEN ONLY USING LOGRHO ########
+
+ACTIVATIONS (fixing adamw as optimizer, a net with inputlayer-50-4-50-inputlayer, random_state=42 and using MESA-Web_M07_Z00001 folder)
+
+#leaky relu             loss: 0.0372 - val_loss: 0.0564
+#relu                   loss: 27.5472 - val_loss: 23.9038
+#gelu                   loss: 25.4396 - val_loss: 22.4579
+#softplus               loss: 26.5266 - val_loss: 23.7081
+#elu                    loss: 18.3213 - val_loss: 16.2276
+#selu                   loss: 13.2534 - val_loss: 11.0716
+#silu                   loss: 24.5555 - val_loss: 21.5700
+
+OPTIMIZERS (fixing leaky relu as an optimizer, a net with inputlayer-50-4-50-inputlayer, random_state=42 and using MESA-Web_M07_Z00001 folder)
+
+#nadam                  loss: 0.0389 - val_loss: 0.0569
+#adam                   loss: 0.0534 - val_loss: 0.0800
+#rmsprop                loss: 0.0674 - val_loss: 0.0803
+#sgd                    loss: 0.5957 - val_loss: 0.9641
+#adagrad                loss: 27.0043 - val_loss: 23.6347
+#adadelta               loss: 30.5359 - val_loss: 25.8563
+#ftrl                   loss: 28.3842 - val_loss: 23.8407
+#adamax                 loss: 0.0585 - val_loss: 0.0814                 
+#adamw                  loss: 0.0409 - val_loss: 0.0534
+#lion                   loss: 1.4606 - val_loss: 1.6946
+
+########### RUN 1 ###########
+
+RUN with
+
+-encoder_neurons=[[20],
+                [50],
+                [100],
+                [50,20],
+                [200,100],
+                [500,250,100]]
+
+-activation leaky_relu
+-optimizers adam,nadam,adamw,rmsprop,adamax
+-hidden layers in range (1,8)
+
+RESULTS STORED IN results1.csv
+
+########### RUN 2 ###########
+
+THE BEST MODEL USES 4 HN, THIS IS AN OUTLIER THO. MOST OF THE BEST MODELS USE EITHER 6 OR 7 HN.
+SAME AS BEFORE THE BEST MODEL HAS 9 LAYERS BUT IS AN OUTLIER. MOST OF THE BEST MODELS HAVE 5 LAYERS.
+THE BEST MODELS USE ADAMAX, ADAM AND ADAMW ARE ALSO GOOD.
+
+RUN with
+
+-encoder_neurons=[[20],
+                [50],
+                [100],
+                [150],
+                [200]]
+
+-activation leaky_relu
+-optimizers adam,adamw,adamax
+-hidden layers in [5,6,7,8,9,10]
+
+######## WHEN USING LOGRHO, LOGT, ENERGY AND MASS ########
+
+ACTIVATIONS (fixing adamax as optimizer, a net with inputlayer-100-50-7-50-100-inputlayer, random_state=42 and using MESA-Web_M07_Z00001 folder)
+
+#leaky relu             loss: 0.1758 - val_loss: 0.2125
+#relu                   loss: 95.4829 - val_loss: 93.8654
+#gelu                   loss: 104.0822 - val_loss: 102.1864
+#softplus               loss: 22.9983 - val_loss: 21.6928
+#elu                    loss: 21.7179 - val_loss: 20.3318
+#selu                   loss: 30.6152 - val_loss: 28.8323  
+#silu                   loss: 106.2597 - val_loss: 104.4144
+
+OPTIMIZERS (fixing leaky relu as an optimizer, a net with inputlayer-100-50-7-50-100-inputlayer, random_state=42 and using MESA-Web_M07_Z00001 folder)
+
+#nadam                  loss: 0.5057 - val_loss: 0.4152  
+#adam                   loss: 0.0793 - val_loss: 0.1202
+#rmsprop                loss: 6.5673 - val_loss: 5.4336           
+#sgd                    loss: nan - val_loss: nan
+#adagrad                loss: 3.1634 - val_loss: 0.9637
+#adadelta               loss: 3.4769 - val_loss: 1.4177
+#ftrl                   loss: 3.1754 - val_loss: 0.9639
+#adamax                 loss: 0.2172 - val_loss: 0.2243
+#adamw                  loss: 0.0927 - val_loss: 0.1234
+#lion                   loss: 7.0427 - val_loss: 4.2736
+
+########### RUN 3 ###########
+
+RUN with
+
+-encoder_neurons=[[20],
+                [50],
+                [100],
+                [50,20],
+                [200,100],
+                [500,250,100]]
+
+-activation leaky_relu
+-optimizers adam,nadam,adamw,adamax
+-hidden layers in range (1,8)
+
+results stored in results3.csv
+
+########### RUN 4 ###########
+
+MOST OF THE BEST MODELS USE 5+ HIDDEN NEURONS.
+IT LOOKS LIKE THE BEST ARCHITECTURE IS ONE WITH 7 LAYERS.
+ADAMAX IS DEFINETELY THE BEST OPTIMIZER.
+
+RUN with
+
+-encoder_neurons=[[50,20],
+                [100,50],
+                [200,100],
+                [500,200]]
+
+-activation leaky_relu
+-optimizers adamax
+-hidden layers in range (5,10)
+
+results stored in results4.csv
+
+######## WHEN USING LOGRHO, LOGT AND ENERGY ########
+
+########### RUN 5 ###########
+
+FROM THE RECONSTRUCTION GRAPHS WE SEE THAT MOST OF THE ERROR COMES FROM THE MASS. IF THE MASS IS NOT NEEDED:
+
+RUN with
+
+-encoder_neurons=[[20],
+                [50],
+                [100],
+                [50,20],
+                [200,100],
+                [500,250,100]]
+
+-activation leaky_relu
+-optimizers adam,nadam,adamw,adamax
+-hidden layers in range (1,8)
+
+results stored in results5.csv
+
+########### RUN 6 ###########
+
+HN 5+ ARE BEST
+5 LAYERS ARE GENERALLY ENOUGH TO GET GOOD loss
+ADAMAX IS AGAIN THE BEST OPTIMIZER
+
+RUN with
+
+-encoder_neurons=[[20],
+                [50],
+                [100],
+                [200],
+                [500]]
+
+-activation leaky_relu
+-optimizers adamax
+-hidden layers in range (5,10)
+
+results stored in results6.csv
