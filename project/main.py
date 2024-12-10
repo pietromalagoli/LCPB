@@ -19,10 +19,10 @@ from tqdm import tqdm
 
 ##########IMPORT PARAMETERS##########
 cwd = os.getcwd()
-dir_names = ['all']  # type 'all' if you want to use all the data
+dir_names = ['MESA-Web_M07_Z00001']  # type 'all' if you want to use all the data
 column_filter = ['mass', 'radius', 'initial_mass', 'initial_z', 'star_age', 'logRho', 'logT',
                  'Teff', 'energy', 'photosphere_L', 'photosphere_r', 'star_mass', 'h1', 'he3', 'he4']
-column_filter_train = ['logRho','logT','energy']  # radius is not included for coding reasons but is still considered
+column_filter_train = ['logRho','logT','energy','mass']  # radius is not included for coding reasons but is still considered
 n_points = 100  # n of points to sample from each profile
 r = np.linspace(0, 1, n_points + 1)[1:]  # values of normalized r on which to take the values of the variables
 
@@ -33,11 +33,7 @@ if dir_names[0] == 'all':
                  'MESA-Web_M5_Z002', 'MESA-Web_M5_Z0001', 'MESA-Web_M1_Z00001', 'MESA-Web_M1_Z0001']
     
 ##HYPERPARAMETERS
-encoder_neurons_list=[[20],
-                [50],
-                [100],
-                [200],
-                [500]]
+encoder_neurons_list=[[100,50]]
  #not counting hidden dimension
 
 activations=['leaky_relu']
@@ -46,7 +42,7 @@ optimizers=['adamax']
 
 losses=[losses.MeanSquaredError()]
 
-list_hidden_neurons=range(5,10)
+list_hidden_neurons=[7]
 
 random_state=42
 
@@ -90,4 +86,4 @@ for encoder_neurons in encoder_neurons_list:
                                            'loss_history':loss_history[list_hidden_neurons.index(hn)]}])
                     performance_data=pd.concat([performance_data,new_row])
 
-performance_data.to_csv('results6.csv')
+performance_data.to_csv(f'results3-{activations[0]}.csv')
