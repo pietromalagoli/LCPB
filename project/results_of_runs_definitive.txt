@@ -62,7 +62,7 @@ RUN with
 
 ACTIVATIONS (fixing adamax as optimizer, a net with inputlayer-100-50-7-50-100-inputlayer, random_state=42 and using MESA-Web_M07_Z00001 folder)
 
-#leaky relu             loss: 0.1758 - val_loss: 0.2125
+#leaky relu             loss: 0.1908 - val_loss: 0.2116
 #relu                   loss: 95.4829 - val_loss: 93.8654
 #gelu                   loss: 104.0822 - val_loss: 102.1864
 #softplus               loss: 22.9983 - val_loss: 21.6928
@@ -72,16 +72,16 @@ ACTIVATIONS (fixing adamax as optimizer, a net with inputlayer-100-50-7-50-100-i
 
 OPTIMIZERS (fixing leaky relu as an optimizer, a net with inputlayer-100-50-7-50-100-inputlayer, random_state=42 and using MESA-Web_M07_Z00001 folder)
 
-#nadam                  loss: 0.5057 - val_loss: 0.4152  
-#adam                   loss: 0.0793 - val_loss: 0.1202
-#rmsprop                loss: 6.5673 - val_loss: 5.4336           
+#nadam                  loss: 0.4197 - val_loss: 0.3710  
+#adam                   loss: 0.0642 - val_loss: 0.0747
+#rmsprop                loss: 6.7063 - val_loss: 5.6750           
 #sgd                    loss: nan - val_loss: nan
-#adagrad                loss: 3.1634 - val_loss: 0.9637
-#adadelta               loss: 3.4769 - val_loss: 1.4177
-#ftrl                   loss: 3.1754 - val_loss: 0.9639
-#adamax                 loss: 0.2172 - val_loss: 0.2243
-#adamw                  loss: 0.0927 - val_loss: 0.1234
-#lion                   loss: 7.0427 - val_loss: 4.2736
+#adagrad                loss: 3.1624 - val_loss: 0.9615
+#adadelta               loss: 3.3756 - val_loss: 1.2652
+#ftrl                   loss: 3.1981 - val_loss: 0.9544
+#adamax                 loss: 0.1637 - val_loss: 0.2155
+#adamw                  loss: 0.0835 - val_loss: 0.1070
+#lion                   loss: 9.0566 - val_loss: 6.5877
 
 ########### RUN 3 ###########
 

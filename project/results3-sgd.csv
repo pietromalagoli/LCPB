@@ -1,0 +1,2 @@
+,encoder_neurons,activation,optimizer,loss,hidden_neurons,avg_final_val_loss,loss_history
+0,"[100, 50]",leaky_relu,sgd,<keras.src.losses.losses.MeanSquaredError object at 0x75a8156361e0>,7,"[3367.27001953125, 3.911317782352678e+19, nan, nan, nan, nan, nan, nan, nan, nan, nan, nan, nan, nan]","[216.80203247070312, 3367.27001953125, 3.911317782352678e+19, nan, nan, nan, nan, nan, nan, nan, nan, nan, nan, nan, nan, nan]"

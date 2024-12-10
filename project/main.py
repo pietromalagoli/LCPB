@@ -38,7 +38,7 @@ encoder_neurons_list=[[100,50]]
 
 activations=['leaky_relu']
 
-optimizers=['adamax']
+optimizers=['lion']
 
 losses=[losses.MeanSquaredError()]
 
@@ -86,4 +86,4 @@ for encoder_neurons in encoder_neurons_list:
                                            'loss_history':loss_history[list_hidden_neurons.index(hn)]}])
                     performance_data=pd.concat([performance_data,new_row])
 
-performance_data.to_csv(f'results3-{activations[0]}.csv')
+performance_data.to_csv(f'results3-{optimizers[0]}.csv')
