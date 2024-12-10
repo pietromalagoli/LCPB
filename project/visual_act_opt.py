@@ -4,8 +4,8 @@ import pandas as pd
 import ast
 
 id=3
-plot_type='activation'  #activation or optimizer
-title='Final Loss of 400-100-50-7-50-100-400 networks \n with fixed adamax optimizer Vs chosen Activations'
+plot_type='optimizer'  #activation or optimizer
+title='Final Loss of 400-100-50-7-50-100-400 networks \n with fixed leaky-relu activation Vs chosen Optimizers'
 
 activations=['relu','leaky_relu','gelu','softplus','elu','selu','silu']
 optimizers=['nadam','adam','rmsprop','sgd','adagrad','adadelta','ftrl','adamax','adamw','lion']

@@ -4,7 +4,8 @@ import matplotlib.pyplot as plt
 import ast
 
 #import and show data
-performance=pd.read_csv('results6.csv')
+filename='results6.csv'
+performance=pd.read_csv(filename)
 #print(performance.head())
 #print(performance.columns)
 
@@ -23,24 +24,30 @@ print(performance.iloc[best])
 
 #plot
 fig, ax = plt.subplots(figsize = (9, 6))
-ax.scatter(x=performance['hidden_neurons'],y=performance['avg_loss'])
-ax.set_xlabel("hidden neurons")
-ax.set_ylabel("average loss")
+ax.scatter(x=performance['hidden_neurons'],y=performance['avg_loss'],s=10)
+ax.set_xlabel("Hidden neurons")
+ax.set_ylabel("Average final loss (avg of last 15 iterations)")
 ax.set_yscale('log')
+ax.set_title('Average final loss Vs Number of Hidden Neurons')
+fig.savefig(f'run{filename.split('.')[0][-1]}_loss_hn.png')
 plt.show()
 
 fig, ax = plt.subplots(figsize = (9, 6))
-ax.scatter(x=performance['num_layers'],y=performance['avg_loss'])
+ax.scatter(x=performance['num_layers'],y=performance['avg_loss'],s=10)
 ax.set_yscale('log')
-ax.set_xlabel("number of layers")
-ax.set_ylabel("average loss")
+ax.set_xlabel("Number of layers")
+ax.set_ylabel("Average final loss (avg of last 15 iterations)")
+ax.set_title('Average final loss Vs Total number of network layers')
+fig.savefig(f'run{filename.split('.')[0][-1]}_loss_layers.png')
 plt.show()
 
 fig, ax = plt.subplots(figsize = (9, 6))
-ax.scatter(x=performance['optimizer'],y=performance['avg_loss'])
+ax.scatter(x=performance['optimizer'],y=performance['avg_loss'],s=10)
 ax.set_yscale('log')
-ax.set_xlabel("optimizer")
-ax.set_ylabel("average loss")
+ax.set_xlabel("Optimizer")
+ax.set_ylabel("Average final loss (avg of last 15 iterations)")
+ax.set_title('Average final loss Vs Used Optimizer')
+fig.savefig(f'run{filename.split('.')[0][-1]}_loss_opt.png')
 plt.show()
 
 print(performance.sort_values(by='avg_loss')[['hidden_neurons','optimizer','avg_loss','encoder_neurons']].head(15)) #
