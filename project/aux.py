@@ -77,44 +77,44 @@ def preprocess(dir_names: list=['all'], features: list=['mass', 'logRho','logT',
         # Construct the full path to the directory
         dir_name=os.path.join(cwd,'StellarTracks',dir_name)
     
-    # List all files in the directory that match the pattern 'profile[0-9]+.data' and sort them by the number in the filename
-    filenames=[filename for filename in os.listdir(dir_name) if re.fullmatch('profile[0-9]+\.data',filename)]
-    filenames=sorted(filenames, key=extract_number) 
+        # List all files in the directory that match the pattern 'profile[0-9]+.data' and sort them by the number in the filename
+        filenames=[filename for filename in os.listdir(dir_name) if re.fullmatch('profile[0-9]+\.data',filename)]
+        filenames=sorted(filenames, key=extract_number) 
 
-    # Loop through each file in the sorted list
-    for j,filename in enumerate(tqdm(filenames, desc=f"Importing from {dir_name}", leave=False)):
+        # Loop through each file in the sorted list
+        for j,filename in enumerate(tqdm(filenames, desc=f"Importing from {dir_name}", leave=False)):
 
-        filename=os.path.join(dir_name,filename)
-        data=mw.read_profile(filename)
+            filename=os.path.join(dir_name,filename)
+            data=mw.read_profile(filename)
 
-        # Create the dataframe for training
-        profile_df=pd.DataFrame(data) # DataFrame with all the columns
-        filtered_profile_df = profile_df[column_filter].copy()# Create a new DataFrame with only the selected columns
-        train_filtered_profile_df = profile_df[features].copy() # Create a new DataFrame with only the selected columns for autoencoder training
+            # Create the dataframe for training
+            profile_df=pd.DataFrame(data) # DataFrame with all the columns
+            filtered_profile_df = profile_df[column_filter].copy()# Create a new DataFrame with only the selected columns
+            train_filtered_profile_df = profile_df[features].copy() # Create a new DataFrame with only the selected columns for autoencoder training
 
-        # Normalization of the radius
-        norm_radius=(filtered_profile_df['radius'] - filtered_profile_df['radius'].min())/(filtered_profile_df['radius'].max()-filtered_profile_df['radius'].min())
-        
-        # Initialize a list to hold the normalized profiles
-        norm_profiles = []
-
-        # Loop through each column in the filtered profile
-        for column in features:
-
-            # Compute the norm of the column
-            norm = filtered_profile_df[column]
+            # Normalization of the radius
+            norm_radius=(filtered_profile_df['radius'] - filtered_profile_df['radius'].min())/(filtered_profile_df['radius'].max()-filtered_profile_df['radius'].min())
             
-            # Take the log of the energy column
-            if column == 'energy':
-                norm = pd.Series([np.log(x) for x in filtered_profile_df[column]])
-                column = 'logEnergy'
-                
-            # Interpolate the normalized radius
-            norm = np.asarray(norm.T)
-            int_norm = UnivariateSpline(norm_radius, norm, k=2, s=0)(r_points)  
-            norm_profiles.append(int_norm)
+            # Initialize a list to hold the normalized profiles
+            norm_profiles = []
 
-        all_profiles.append(np.array(norm_profiles).T)  # Append normalized profiles
+            # Loop through each column in the filtered profile
+            for column in features:
+
+                # Compute the norm of the column
+                norm = filtered_profile_df[column]
+                
+                # Take the log of the energy column
+                if column == 'energy':
+                    norm = pd.Series([np.log(x) for x in filtered_profile_df[column]])
+                    column = 'logEnergy'
+                    
+                # Interpolate the normalized radius
+                norm = np.asarray(norm.T)
+                int_norm = UnivariateSpline(norm_radius, norm, k=2, s=0)(r_points)  
+                norm_profiles.append(int_norm)
+
+            all_profiles.append(np.array(norm_profiles).T)  # Append normalized profiles
         
     # Rename the features accordinlgy to the changes
     features = ['mass', 'logRho','logT','logEnergy']
