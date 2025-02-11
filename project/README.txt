@@ -13,3 +13,7 @@ C'è da controllare come viene calcolato l'MSE.
 Per l'MSE ho cambiato e ora prende la media dell'MSE su tutti i profili, quando invece prima prendeva solo sul primo. 
 Ho fatto questo cambiamento perché non c'è un motivo valido per cui dovremmo guardare solo il primo profilo quando valutiamo le performance
 del modello. Dobbiamo vedere come il modello performa su tutti i profili. 
+
+11/02 
+finisco di fare il codice per i plot. quasi fatto
+si può fare anche un plot dell'mse per varie latent dimension per one feature e poi per 4

@@ -21,7 +21,7 @@ warnings.filterwarnings('ignore')
 cwd = os.getcwd()  
 
 # Initialize the list of directory names to 'all'
-dir_names=['MESA-Web_M07_Z00001']   
+dir_names=['all']   
 # Define the columns to be filtered from the data and the columns to be used for training
 column_filter = ['mass','radius', 'initial_mass', 'initial_z', 'star_age', 'logRho','logT','Teff','energy','photosphere_L', 'photosphere_r', 'star_mass','h1','he3','he4']
 column_filter_train = ['mass', 'logRho','logT','energy'] 
@@ -151,11 +151,13 @@ class Network(tf.keras.Model):
 ##########
 # PARAMETERS OPTIMIZATION
 
-#optimizers=['nadam','adam','rmsprop','sgd','adagrad','adadelta','ftrl','adamax','adamw','lion']
-optimizers=['nadam','adam']
-#activations=['relu','leaky_relu','gelu','softplus','elu','selu','silu']
-activations=['relu','leaky_relu']
+optimizers=['adam','nadam','rmsprop','adagrad','adadelta','ftrl','adamax','adamw','lion']
+activations=['relu','leaky_relu','gelu','softplus','elu','selu','silu']
+
+# activations (fixed adam)
 performance_data=pd.DataFrame()
+
+optimizer = optimizers[0]
 
 for activation in activations:
 
@@ -170,7 +172,7 @@ for activation in activations:
     autoencoder = Network(hyperparameters)
 
     # Compile the model
-    autoencoder.compile(optimizer=optimizers[0], loss=tf.keras.losses.MeanSquaredError())
+    autoencoder.compile(optimizer=optimizer, loss=tf.keras.losses.MeanSquaredError())
 
     # Train the model
     history = autoencoder.fit(x_train_tf, x_train_tf,
@@ -180,19 +182,16 @@ for activation in activations:
                                 callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=20)])
     
     new_row=pd.DataFrame([{'activation':activation,
+                           'optimizer':optimizer,
                             'avg_final_val_loss': np.mean(history.history['loss'][-15:])}])
     performance_data=pd.concat([performance_data,new_row])
 
-performance_data.to_csv(f'results-{optimizers[0]}.csv')
-
+performance_data.to_csv(f'results-{optimizer}.csv')
 
 plot_type='activation'  #activation or optimizer
-title=f'Activation optimization with fixed optimizer as {optimizers[0]}'
+title=f'Activations performances with fixed optimizer as {optimizer}'
 
-if plot_type=='activation':
-    file=f'results-{optimizers[0]}.csv'
-elif plot_type=='optimizer':
-    file=f'results-{activations[0]}.csv'
+file=f'results-{optimizer}.csv'
 
 fig = plt.figure(figsize=(10,5))
 
@@ -201,10 +200,68 @@ data=pd.read_csv(file)
 data['avg_final_val_loss'] = data['avg_final_val_loss'].apply(lambda x: ast.literal_eval(x))
 data['avg_final_val_loss'] = data['avg_final_val_loss'].apply(lambda x: pd.Series(x).mean())
 '''
-plt.scatter(data[plot_type],data['avg_final_val_loss'])
+colors = plt.cm.rainbow(np.linspace(0, 1, len(data)))
+for i, (x, y) in enumerate(zip(data[plot_type], data['avg_final_val_loss'])):
+    plt.scatter(x, y, color=colors[i])
     
 plt.title(title)
 plt.xlabel(plot_type)
 plt.ylabel('Final Loss (mean over last 15 steps)')
-plt.savefig(f'loss_Vs_{plot_type}.png')
-plt.show()
+plt.savefig('act_opt1.png')
+
+
+# optimizers computation (fixed ReLU)
+performance_data=pd.DataFrame()
+
+activation = activations[0]
+   
+for optimizer in optimizers:
+ 
+    # Hyperparameters setup
+    hyperparameters = {
+        'input_size': x_train_tf.shape[1:],  # Input shape
+        'output_size': x_train_tf.shape[-1],  # Output shape
+        'activation': activation,  # Fixed activation function
+        'latent_dim': 1  # Fixed latent dimension
+    }
+
+    autoencoder = Network(hyperparameters)
+
+    # Compile the model
+    autoencoder.compile(optimizer=optimizer, loss=tf.keras.losses.MeanSquaredError())
+
+    # Train the model
+    history = autoencoder.fit(x_train_tf, x_train_tf,
+                                epochs=150,
+                                shuffle=True,
+                                validation_data=(x_test_tf, x_test_tf),
+                                callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=20)])
+    
+    new_row=pd.DataFrame([{'activation':activation,
+                           'optimizer':optimizer,
+                            'avg_final_val_loss': np.mean(history.history['loss'][-15:])}])
+    performance_data=pd.concat([performance_data,new_row])
+
+performance_data.to_csv(f'results-{activation}.csv')
+
+
+plot_type='optimizer'  #activation or optimizer
+title=f'Optimizers performances with fixed optimizer as {activation}'
+
+file=f'results-{activation}.csv'
+
+fig = plt.figure(figsize=(10,5))
+
+data=pd.read_csv(file)
+'''
+data['avg_final_val_loss'] = data['avg_final_val_loss'].apply(lambda x: ast.literal_eval(x))
+data['avg_final_val_loss'] = data['avg_final_val_loss'].apply(lambda x: pd.Series(x).mean())
+'''
+colors = plt.cm.rainbow(np.linspace(0, 1, len(data)))
+for i, (x, y) in enumerate(zip(data[plot_type], data['avg_final_val_loss'])):
+    plt.scatter(x, y, color=colors[i])
+    
+plt.title(title)
+plt.xlabel(plot_type)
+plt.ylabel('Final Loss (mean over last 15 steps)')
+plt.savefig('opt_opt1.png')
