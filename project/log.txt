@@ -16,4 +16,11 @@ del modello. Dobbiamo vedere come il modello performa su tutti i profili.
 
 11/02 
 finisco di fare il codice per i plot. quasi fatto
-si può fare anche un plot dell'mse per varie latent dimension per one feature e poi per 4
+si può fare anche un plot dell'mse per varie latent dimension per one feature e poi per 4.
+Il problema dei plot era che sgd non funziona come optimizer per il nostro modello e quindi non c'era alcun valore lì e quando provava a 
+plottare si bloccava perché quella cella è vuota. Quindi ho cavato l'sgd. ora funziona.
+Ora faccio con 4 features.
+
+Rip, mi sono appena accorto che l'activation era fissata dentro al modello, quindi i risultati per le activation non vogliono dire nulla
+fixato ciò, non capisco come mai la relu performi malissimo, ma va beh
+se metti time prima di un comando, te lo tima in standard output (e.g. time python3 par_opt.py).

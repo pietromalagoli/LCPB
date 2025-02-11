@@ -1,0 +1,8 @@
+,activation,optimizer,avg_final_val_loss
+0,leaky_relu,adam,0.16764053280154864
+0,relu,adam,15.777591641743978
+0,gelu,adam,14.710867881774902
+0,softplus,adam,14.807019170125326
+0,elu,adam,11.911636797587077
+0,selu,adam,9.765126419067382
+0,silu,adam,13.913646825154622

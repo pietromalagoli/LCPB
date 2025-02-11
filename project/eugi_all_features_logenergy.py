@@ -120,7 +120,10 @@ class Network(tf.keras.Model):
         self.activation = hyperparameters['activation']
         self.latent_dim = hyperparameters['latent_dim']
 
-        act = tf.keras.layers.LeakyReLU(alpha= 0.35)
+        if self.activation == 'leakyrelu': 
+            act = tf.keras.layers.LeakyReLU(alpha= 0.35)
+        else:
+            act = self.activation
 
         # Define the layers of the network (encoder and decoder)
         self.encoder = tf.keras.Sequential([
@@ -275,63 +278,3 @@ mse_values = calculate_mse(x_test_tf, x_reconstructed, features)
 # Graphs with errors for each feature
 plot_mse(mse_values, features, save_dir)
 
-##########
-# PARAMETERS OPTIMIZATION
-
-optimizers=['nadam','adam','rmsprop','sgd','adagrad','adadelta','ftrl','adamax','adamw','lion']
-activations=['relu','leaky_relu','gelu','softplus','elu','selu','silu']
-performance_data=pd.DataFrame()
-
-for activation in activations:
-    for optimizer in optimizers:
-        
-        # Hyperparameters setup
-        hyperparameters = {
-            'input_size': x_train_tf.shape[1:],  # Input shape
-            'output_size': x_train_tf.shape[-1],  # Output shape
-            'activation': activation,  # Fixed activation function
-            'latent_dim': 1  # Fixed latent dimension
-        }
-
-        autoencoder = Network(hyperparameters)
-
-        # Compile the model
-        autoencoder.compile(optimizer=optimizer, loss=tf.keras.losses.MeanSquaredError())
-
-        # Train the model
-        history = autoencoder.fit(x_train_tf, x_train_tf,
-                                    epochs=150,
-                                    shuffle=True,
-                                    validation_data=(x_test_tf, x_test_tf),
-                                    callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=20)])
-        
-        new_row=pd.DataFrame([{'activation':activation,
-                                'optimizer':optimizer,
-                                'avg_final_val_loss': np.mean(history.history['loss'][-15:])}])
-        performance_data=pd.concat([performance_data,new_row])
-
-performance_data.to_csv(f'results-{optimizers[0]}.csv')
-
-import ast
-
-plot_type='optimizer'  #activation or optimizer
-title='Optimizer optimization'
-
-if plot_type=='activation':
-    filenames=[f'results-{act}.csv' for act in activations]
-elif plot_type=='optimizer':
-    filenames=[f'results-{opt}.csv' for opt in optimizers]
-
-fig = plt.figure(figsize=(10,5))
-
-for file in filenames:
-    data=pd.read_csv(file)
-    data['avg_final_val_loss'] = data['avg_final_val_loss'].apply(lambda x: ast.literal_eval(x))
-    data['avg_final_val_loss'] = data['avg_final_val_loss'].apply(lambda x: pd.Series(x).mean())
-    plt.scatter(data[plot_type],data['avg_final_val_loss'])
-    
-plt.title(title)
-plt.xlabel(plot_type)
-plt.ylabel('Final Loss (mean over last 15 steps)')
-plt.savefig(f'loss_Vs_{plot_type}_{id}.png')
-plt.show()

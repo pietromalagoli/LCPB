@@ -121,7 +121,10 @@ class Network(tf.keras.Model):
         self.activation = hyperparameters['activation']
         self.latent_dim = hyperparameters['latent_dim']
 
-        act = tf.keras.layers.LeakyReLU(alpha= 0.35)
+        if self.activation == 'leakyrelu': 
+            act = tf.keras.layers.LeakyReLU(alpha= 0.35)
+        else:
+            act = self.activation
 
         # Define the layers of the network (encoder and decoder)
         self.encoder = tf.keras.Sequential([
@@ -151,8 +154,10 @@ class Network(tf.keras.Model):
 ##########
 # PARAMETERS OPTIMIZATION
 
+save_dir = os.path.join(os.getcwd(), "Graphs")  
+
 optimizers=['adam','nadam','rmsprop','adagrad','adadelta','ftrl','adamax','adamw','lion']
-activations=['relu','leaky_relu','gelu','softplus','elu','selu','silu']
+activations=['leaky_relu','relu','gelu','softplus','elu','selu','silu']
 
 # activations (fixed adam)
 performance_data=pd.DataFrame()
@@ -166,7 +171,7 @@ for activation in activations:
         'input_size': x_train_tf.shape[1:],  # Input shape
         'output_size': x_train_tf.shape[-1],  # Output shape
         'activation': activation,  # Fixed activation function
-        'latent_dim': 1  # Fixed latent dimension
+        'latent_dim': 4  # Fixed latent dimension
     }
 
     autoencoder = Network(hyperparameters)
@@ -186,12 +191,12 @@ for activation in activations:
                             'avg_final_val_loss': np.mean(history.history['loss'][-15:])}])
     performance_data=pd.concat([performance_data,new_row])
 
-performance_data.to_csv(f'results-{optimizer}.csv')
+performance_data.to_csv(f'results-{optimizer}-{hyperparameters['latent_dim']}.csv')
 
 plot_type='activation'  #activation or optimizer
 title=f'Activations performances with fixed optimizer as {optimizer}'
 
-file=f'results-{optimizer}.csv'
+file=f'results-{optimizer}-{hyperparameters['latent_dim']}.csv'
 
 fig = plt.figure(figsize=(10,5))
 
@@ -207,7 +212,8 @@ for i, (x, y) in enumerate(zip(data[plot_type], data['avg_final_val_loss'])):
 plt.title(title)
 plt.xlabel(plot_type)
 plt.ylabel('Final Loss (mean over last 15 steps)')
-plt.savefig('act_opt1.png')
+file_path = os.path.join(save_dir,f'{plot_type}_opt{hyperparameters['latent_dim']}.png')
+plt.savefig(file_path)
 
 
 # optimizers computation (fixed ReLU)
@@ -222,7 +228,7 @@ for optimizer in optimizers:
         'input_size': x_train_tf.shape[1:],  # Input shape
         'output_size': x_train_tf.shape[-1],  # Output shape
         'activation': activation,  # Fixed activation function
-        'latent_dim': 1  # Fixed latent dimension
+        'latent_dim': 4  # Fixed latent dimension
     }
 
     autoencoder = Network(hyperparameters)
@@ -242,13 +248,13 @@ for optimizer in optimizers:
                             'avg_final_val_loss': np.mean(history.history['loss'][-15:])}])
     performance_data=pd.concat([performance_data,new_row])
 
-performance_data.to_csv(f'results-{activation}.csv')
+performance_data.to_csv(f'results-{activation}-{hyperparameters['latent_dim']}.csv')
 
 
 plot_type='optimizer'  #activation or optimizer
 title=f'Optimizers performances with fixed optimizer as {activation}'
 
-file=f'results-{activation}.csv'
+file=f'results-{activation}-{hyperparameters['latent_dim']}.csv'
 
 fig = plt.figure(figsize=(10,5))
 
@@ -264,4 +270,5 @@ for i, (x, y) in enumerate(zip(data[plot_type], data['avg_final_val_loss'])):
 plt.title(title)
 plt.xlabel(plot_type)
 plt.ylabel('Final Loss (mean over last 15 steps)')
-plt.savefig('opt_opt1.png')
+file_path = os.path.join(save_dir,f'{plot_type}_opt{hyperparameters['latent_dim']}.png')
+plt.savefig(file_path)

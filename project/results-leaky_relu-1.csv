@@ -1,0 +1,10 @@
+,activation,optimizer,avg_final_val_loss
+0,leaky_relu,adam,1.906358536084493
+0,leaky_relu,nadam,1.9478517134984334
+0,leaky_relu,rmsprop,2.6300647099812826
+0,leaky_relu,adagrad,36.007301076253256
+0,leaky_relu,adadelta,36.4571164449056
+0,leaky_relu,ftrl,38.98983510335287
+0,leaky_relu,adamax,2.4028940359751383
+0,leaky_relu,adamw,1.987519367535909
+0,leaky_relu,lion,1.596251900990804
