@@ -13,7 +13,7 @@ from scipy.interpolate import UnivariateSpline
 from tqdm import tqdm 
 import ast
 
-plt.rcParams.update({'font.size': 18})
+plt.rcParams.update({'font.size': 25})
 
 
 ##########
@@ -21,7 +21,7 @@ plt.rcParams.update({'font.size': 18})
 
 save_dir = os.path.join(os.getcwd(), "Graphs")  
 
-optimizers=['adam','nadam','rmsprop','adagrad','adadelta','ftrl','adamax','adamw','lion']
+optimizers=['adam','nadam','rmsprop','adagrad','adadelta','ftrl','adamax','lion']
 activations=['leaky_relu','relu','gelu','softplus','elu','selu','silu']
 
 # activations (fixed adam)
@@ -39,7 +39,7 @@ title=f'Activations performances with fixed optimizer as {optimizer}'
 
 file=f'results-{optimizer}-{hyperparameters['latent_dim']}.csv'
 
-fig = plt.figure(figsize=(13,7))
+fig = plt.figure(figsize=(15,7.5))
 
 data=pd.read_csv(file)
 '''
@@ -67,7 +67,7 @@ title=f'Optimizers performances with fixed optimizer as {activation}'
 
 file=f'results-{activation}-{hyperparameters['latent_dim']}.csv'
 
-fig = plt.figure(figsize=(13,7))
+fig = plt.figure(figsize=(15,7.5))
 
 data=pd.read_csv(file)
 '''
